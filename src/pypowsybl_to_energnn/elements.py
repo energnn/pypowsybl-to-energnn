@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 
 import pandas as pd
 import pypowsybl.network as pn
-from energnn.graph import EdgeStructure
+from energnn.graph import HyperEdgeSetStructure
 
 
 class ElementsConverter(ABC):
@@ -48,9 +48,9 @@ class ElementsConverter(ABC):
         """Should return a pandas DataFrame containing addresses and features."""
         raise NotImplementedError
 
-    def get_structure(self) -> EdgeStructure:
+    def get_structure(self) -> HyperEdgeSetStructure:
         """Get the edge structure of the element, useful for building an EnerGNN model."""
-        return EdgeStructure(address_list=self.address_list, feature_list=self.feature_list)
+        return HyperEdgeSetStructure(port_list=self.address_list, feature_list=self.feature_list)
 
 
 class TwoWindingsTransformersConverter(ElementsConverter):
