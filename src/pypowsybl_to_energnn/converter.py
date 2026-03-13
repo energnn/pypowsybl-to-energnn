@@ -122,7 +122,7 @@ def _tables_to_jaxgraph(tables: dict[str, tuple[pd.DataFrame, pd.DataFrame]], n_
         else:
             n = df_address.shape[0]
         non_fictitious = jnp.ones(n, dtype=jnp.float32)
-        hyper_edge_set_shapes = jnp.array([n], dtype=jnp.int32)
+        hyper_edge_set_shapes[k] = jnp.array([n], dtype=jnp.int32)
 
         # 1.5. Create the JaxEdge.
         hyper_edge_set_dict[k] = JaxHyperEdgeSet(
