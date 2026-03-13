@@ -9,22 +9,10 @@ authors = [
 requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
-    "energnn",
+    "energnn>=0.2",
     "pypowsybl>=1.14"
 ]
 
-[tool.uv.sources]
-energnn = { git = "https://github.com/energnn/energnn", branch = "main" }
-
-[project.optional-dependencies]
-
-docs = [
-    "sphinx",
-    "furo",
-    "sphinx-copybutton",
-    "nbsphinx",
-    "ipykernel",
-]
 
 [dependency-groups]
 dev = [
@@ -39,6 +27,14 @@ dev = [
     "boto3-stubs>=1.28.0",
     "types-tqdm>=4",
 ]
+docs = [
+    "sphinx",
+    "furo",
+    "sphinx-copybutton",
+    "nbsphinx",
+    "ipykernel",
+]
+
 
 [build-system]
 requires = ["hatchling"]

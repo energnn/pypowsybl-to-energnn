@@ -10,7 +10,7 @@ import jax.numpy as jnp
 import numpy as np
 import pandas as pd
 import pypowsybl.network as pn
-from energnn.graph import GraphStructure, JaxEdge, JaxGraph, JaxGraphShape
+from energnn.graph import GraphStructure, JaxGraph, JaxGraphShape, JaxHyperEdgeSet
 
 from pypowsybl_to_energnn.elements import ElementsConverter
 
@@ -20,7 +20,7 @@ class Converter:
     elements_converter_dict: dict[str, ElementsConverter]
 
     def get_structure(self) -> GraphStructure:
-        return GraphStructure(edges={k: c.get_structure() for k, c in self.elements_converter_dict.items()})
+        return GraphStructure(hyper_edge_sets={k: c.get_structure() for k, c in self.elements_converter_dict.items()})
 
     def __call__(self, network: pn.Network, **kwargs) -> JaxGraph:
         # Build dict of tables
@@ -94,15 +94,15 @@ def _tables_to_jaxgraph(tables: dict[str, tuple[pd.DataFrame, pd.DataFrame]], n_
     # Créons des JaxGraph direct
 
     # 1. Créer le dictionnaire de JaxEdge
-    edge_dict = {}
-    edge_shapes = {}
+    hyper_edge_set_dict = {}
+    hyper_edge_set_shapes = {}
     for k, (df_address, df_feature) in tables.items():
 
         # 1.1. Dictionary that maps address names to values.
         if df_address is not None:
-            address_dict = {kk: jnp.array(df_address[kk], dtype=jnp.int32) for kk in df_address.columns}
+            port_dict = {kk: jnp.array(df_address[kk], dtype=jnp.int32) for kk in df_address.columns}
         else:
-            address_dict = None
+            port_dict = None
 
         # 1.2. Array that contains all hyper-edge features.
         if df_feature is not None:
@@ -122,20 +122,23 @@ def _tables_to_jaxgraph(tables: dict[str, tuple[pd.DataFrame, pd.DataFrame]], n_
         else:
             n = df_address.shape[0]
         non_fictitious = jnp.ones(n, dtype=jnp.float32)
-        edge_shapes = jnp.array([n], dtype=jnp.int32)
+        hyper_edge_set_shapes[k] = jnp.array([n], dtype=jnp.int32)
 
         # 1.5. Create the JaxEdge.
-        edge_dict[k] = JaxEdge(
-            address_dict=address_dict, feature_array=feature_array, feature_names=feature_names, non_fictitious=non_fictitious
+        hyper_edge_set_dict[k] = JaxHyperEdgeSet(
+            port_dict=port_dict, feature_array=feature_array, feature_names=feature_names, non_fictitious=non_fictitious
         )
 
     # 2. Créer la true shape, qui est égale à la current shape.
-    true_shape = JaxGraphShape(edges=edge_shapes, addresses=jnp.array([n_addresses], dtype=jnp.int32))
-    current_shape = JaxGraphShape(edges=edge_shapes, addresses=jnp.array([n_addresses], dtype=jnp.int32))
+    true_shape = JaxGraphShape(hyper_edge_sets=hyper_edge_set_shapes, addresses=jnp.array([n_addresses], dtype=jnp.int32))
+    current_shape = JaxGraphShape(hyper_edge_sets=hyper_edge_set_shapes, addresses=jnp.array([n_addresses], dtype=jnp.int32))
 
     # 3. Créer le non_fictitious_addresses, qui doit être de la taille du nombre d'adresses uniques. Nombre qu'on avait direct.
     non_fictitious_addresses = jnp.ones(n_addresses, dtype=jnp.float32)
 
     return JaxGraph(
-        edges=edge_dict, true_shape=true_shape, current_shape=current_shape, non_fictitious_addresses=non_fictitious_addresses
+        hyper_edge_sets=hyper_edge_set_dict,
+        true_shape=true_shape,
+        current_shape=current_shape,
+        non_fictitious_addresses=non_fictitious_addresses,
     )
