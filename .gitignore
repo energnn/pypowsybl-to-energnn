@@ -1,0 +1,45 @@
+# Caches Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.pytype/
+
+# Environnements virtuels
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+*.egg-info/
+
+# Données (Si vous souhaitez ignorer les fichiers volumineux dans data/)
+data/*.xml
+data/*.xml.bz2
+data/*.xiidm
+data/*.zip
+data/*.csv
+data/*.json
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Fichiers système
+.DS_Store
+Thumbs.db
