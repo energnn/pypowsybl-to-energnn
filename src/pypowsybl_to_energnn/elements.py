@@ -108,6 +108,11 @@ class HVDCLinesConverter(ElementsConverter):
         return network.get_hvdc_lines(attributes=self.attributes).reset_index()
 
 
+class HVDCOperatorActivePowerRangeConverter(ElementsConverter):
+    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_extensions("hvdcOperatorActivePowerRange")
+
+
 class LCCConverterStationsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_lcc_converter_stations(attributes=self.attributes).reset_index()
@@ -128,7 +133,14 @@ class OperationalLimitsConverter(ElementsConverter):
         return network.get_operational_limits(attributes=self.attributes).reset_index()
 
 
-class PhaseTapCHangersConverter(ElementsConverter):
+class PermanentLimitsConverter(ElementsConverter):
+    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+        limits = network.get_operational_limits(attributes=self.attributes).reset_index()
+        limits = limits[limits["name"] == "permanent_limit"]
+        return limits.reset_index()
+
+
+class PhaseTapChangersConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_phase_tap_changers(attributes=self.attributes).reset_index()
 
@@ -136,6 +148,16 @@ class PhaseTapCHangersConverter(ElementsConverter):
 class RatioTapChangersConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_ratio_tap_changers(attributes=self.attributes).reset_index()
+
+
+class SecondaryVoltageControlUnitsConverter(ElementsConverter):
+    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_extensions("secondaryVoltageControl", "units")
+
+
+class SecondaryVoltageControlZonesConverter(ElementsConverter):
+    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_extensions("secondaryVoltageControl", "zones")
 
 
 class ShuntCompensatorsConverter(ElementsConverter):
@@ -146,6 +168,11 @@ class ShuntCompensatorsConverter(ElementsConverter):
 class StaticVarCompensatorsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_static_var_compensators(attributes=self.attributes).reset_index()
+
+
+class StandByAutomatonConverter(ElementsConverter):
+    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_extensions("standbyAutomaton")
 
 
 class SubstationsConverter(ElementsConverter):
