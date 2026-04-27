@@ -5,5 +5,6 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from .ac_load_flow import ACLoadFlowInputConverter, ACLoadFlowOutputConverter
+from .tertiary_voltage_control import TertiaryVoltageControlInputConverter
 
-__all__ = ["ACLoadFlowInputConverter", "ACLoadFlowOutputConverter"]
+__all__ = ["ACLoadFlowInputConverter", "ACLoadFlowOutputConverter", "TertiaryVoltageControlInputConverter"]

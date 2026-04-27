@@ -133,11 +133,11 @@ class OperationalLimitsConverter(ElementsConverter):
         return network.get_operational_limits(attributes=self.attributes).reset_index()
 
 
-class PermanentLimitsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        limits = network.get_operational_limits(attributes=self.attributes).reset_index()
-        limits = limits[limits["name"] == "permanent_limit"]
-        return limits.reset_index()
+# class PermanentLimitsConverter(ElementsConverter):
+#     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
+#         limits = network.get_operational_limits(attributes=self.attributes).reset_index()
+#         limits = limits[limits["name"] == "permanent_limit"]
+#         return limits.reset_index()
 
 
 class PhaseTapChangersConverter(ElementsConverter):
@@ -223,3 +223,18 @@ class DCGroundsConverter(ElementsConverter):
 class DCBusesConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_dc_buses(attributes=self.attributes).reset_index()
+
+
+class ControllableLinesConverter(ElementsConverter):
+    def _get_table(self, *, controllable_lines: list[str], **kwargs) -> pd.DataFrame:
+        return pd.DataFrame(controllable_lines, columns=["line_id"])
+
+
+class ControllableShuntsConverter(ElementsConverter):
+    def _get_table(self, *, controllable_shunts: list[str], **kwargs) -> pd.DataFrame:
+        return pd.DataFrame(controllable_shunts, columns=["shunt_id"])
+
+
+class ControllableSecondaryVoltageControlZonesConverter(ElementsConverter):
+    def _get_table(self, *, controllable_zones: list[str], **kwargs) -> pd.DataFrame:
+        return pd.DataFrame(controllable_zones, columns=["zone_id"])
