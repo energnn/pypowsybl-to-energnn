@@ -104,7 +104,7 @@ class TertiaryVoltageControlInputConverter(Converter):
         ),
         "loads": LoadsConverter(["bus_id"], ["p0", "q0", "connected", "p", "q", "i"]),
         "secondary_voltage_control_units": SecondaryVoltageControlUnitsConverter(["unit_id", "zone_name"], ["participate"]),
-        "secondary_voltage_control_zones": SecondaryVoltageControlZonesConverter(["name", "bus_id"], ["target_v"]),
+        "secondary_voltage_control_zones": SecondaryVoltageControlZonesConverter(["name", "bus_ids"], ["target_v"]),
         "shunts": ShuntCompensatorsConverter(
             ["id", "bus_id"],
             [
