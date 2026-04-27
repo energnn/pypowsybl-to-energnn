@@ -152,12 +152,12 @@ class RatioTapChangersConverter(ElementsConverter):
 
 class SecondaryVoltageControlUnitsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_extensions("secondaryVoltageControl", "units")
+        return network.get_extensions("secondaryVoltageControl", "units").reset_index()
 
 
 class SecondaryVoltageControlZonesConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_extensions("secondaryVoltageControl", "zones")
+        return network.get_extensions("secondaryVoltageControl", "zones").reset_index()
 
 
 class ShuntCompensatorsConverter(ElementsConverter):
