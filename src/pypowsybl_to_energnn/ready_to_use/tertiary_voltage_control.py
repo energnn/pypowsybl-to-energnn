@@ -113,7 +113,6 @@ class TertiaryVoltageControlInputConverter(Converter):
                 "i",
                 "g",
                 "b",
-                "p",
                 "max_section_count",
                 "section_count",
                 "voltage_regulation_on",
