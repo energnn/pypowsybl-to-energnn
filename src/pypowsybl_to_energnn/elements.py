@@ -130,7 +130,7 @@ class LoadsConverter(ElementsConverter):
 
 class OperationalLimitsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_operational_limits(attributes=self.attributes).reset_index()
+        return network.get_operational_limits().reset_index()
 
 
 # class PermanentLimitsConverter(ElementsConverter):
