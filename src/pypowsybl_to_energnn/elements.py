@@ -110,7 +110,7 @@ class HVDCLinesConverter(ElementsConverter):
 
 class HVDCOperatorActivePowerRangeConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_extensions("hvdcOperatorActivePowerRange")
+        return network.get_extensions("hvdcOperatorActivePowerRange").reset_index()
 
 
 class LCCConverterStationsConverter(ElementsConverter):
