@@ -10,9 +10,11 @@ requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
     "energnn[gpu]>=0.2",
-    "pypowsybl>=1.14"
+    "pypowsybl==1.14"
 ]
 
+[project.optional-dependencies]
+rte = ["pypowsybl-rte"]
 
 [dependency-groups]
 dev = [
