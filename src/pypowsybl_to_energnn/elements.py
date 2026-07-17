@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import pypowsybl.network as pn
 from energnn.graph import HyperEdgeSetStructure
-
+from pandapower.auxiliary import pandapowerNet
 
 class ElementsConverter(ABC):
     """Abstract base class for elements converters.
@@ -80,7 +80,16 @@ class BusBarSectionsConverter(ElementsConverter):
 
 class BusesConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_buses(attributes=self.attributes).reset_index()
+        if isinstance(network, pn.Network):
+            return network.get_buses(attributes=self.attributes).reset_index()
+        elif isinstance(network, pandapowerNet):
+            bus_df = network.bus.copy()
+            bus_df['energnn_adress'] = bus_df.index.astype(float)
+            bus_df['vm_pu'] = network.res_bus.vm_pu
+            bus_df['va_degree'] = network.res_bus.va_degree
+            return bus_df
+        else:
+            raise NotImplementedError("Given network must be of type pypowsybl.networks.Network or pandapower.auxiliary.pandapowerNet")
 
 
 class BusBreakerViewBusesConverter(ElementsConverter):
@@ -102,6 +111,9 @@ class GeneratorsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_generators(attributes=self.attributes).reset_index()
 
+class ExtGridConverter(ElementsConverter):
+    def _get_table(self, *, network: pandapowerNet, **kwargs) -> pd.DataFrame:
+        return network.ext_grid
 
 class HVDCLinesConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
@@ -114,13 +126,32 @@ class LCCConverterStationsConverter(ElementsConverter):
 
 
 class LinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_lines(attributes=self.attributes).reset_index()
-
+    def _get_table(self, *, network: pn.Network | pandapowerNet, **kwargs) -> pd.DataFrame:
+        if isinstance(network, pn.Network):
+            return network.get_lines(attributes=self.attributes).reset_index()
+        elif isinstance(network, pandapowerNet):
+            line_df = network.line.copy()
+            line_df['r_ohm'] = line_df.r_ohm_per_km * line_df.length_km
+            line_df['x_ohm'] = line_df.x_ohm_per_km * line_df.length_km
+            line_df['c_nf'] = line_df.c_nf_per_km * line_df.length_km
+            line_df['p_from_mw'] = network.res_line.p_from_mw
+            line_df['q_from_mvar'] = network.res_line.q_from_mvar
+            line_df['i_from_ka'] = network.res_line.i_from_ka
+            line_df['p_to_mw'] = network.res_line.p_to_mw
+            line_df['q_to_mvar'] = network.res_line.q_to_mvar
+            line_df['i_to_ka'] = network.res_line.i_to_ka
+            return line_df
+        else:
+            raise NotImplementedError("Given network must be of type pypowsybl.networks.Network or pandapower.auxiliary.pandapowerNet")
 
 class LoadsConverter(ElementsConverter):
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_loads(attributes=self.attributes).reset_index()
+        if isinstance(network, pn.Network):
+            return network.get_loads(attributes=self.attributes).reset_index()
+        elif isinstance(network, pandapowerNet):
+            return network.load
+        else:
+            raise NotImplementedError("Given network must be of type pypowsybl.networks.Network or pandapower.auxiliary.pandapowerNet")
 
 
 class OperationalLimitsConverter(ElementsConverter):
