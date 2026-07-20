@@ -97,6 +97,7 @@ class ACLoadFlowInputConverter(Converter):
 class ACLoadFlowOutputConverter(Converter):
 
     elements_converter_dict = {
+        "two_windings_transformers": TwoWindingsTransformersConverter(None, ["p1", "q1", "i1", "p2", "q2", "i2"]),
         "batteries": BatteriesConverter(None, ["p", "q", "i"]),
         "buses": BusesConverter(None, ["v_mag"]),  # Phase angle is not permutation equivariant
         "dangling_lines": DanglingLinesConverter(None, ["p", "q", "i"]),
