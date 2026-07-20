@@ -16,6 +16,7 @@ from pypowsybl_to_energnn.elements import (
     LoadsConverter,
     ShuntCompensatorsConverter,
     StaticVarCompensatorsConverter,
+    TwoWindingsTransformersConverter,
     VSCConverterStationsConverter,
 )
 
@@ -23,6 +24,10 @@ from pypowsybl_to_energnn.elements import (
 class ACLoadFlowInputConverter(Converter):
 
     elements_converter_dict = {
+        "two_windings_transformers": TwoWindingsTransformersConverter(
+            ["bus1_id", "bus2_id"],
+            ["r", "x", "g", "b", "rated_u1", "rated_u2", "rated_s", "rho", "alpha", "connected1", "connected2"],
+        ),
         "batteries": BatteriesConverter(
             ["bus_id"],
             ["max_p", "min_p", "min_q", "max_q", "target_p", "target_q", "connected"],

@@ -10,8 +10,13 @@ requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
     "energnn>=0.2",
-    "pypowsybl>=1.14"
+    "pypowsybl>=1.14",
+    "pandapower"
 ]
+
+[tool.uv.sources]
+energnn = { git = "https://github.com/energnn/energnn", branch = "main" }
+
 
 
 [dependency-groups]
