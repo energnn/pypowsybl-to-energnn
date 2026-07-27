@@ -1,6 +1,6 @@
 [project]
 name = "pypowsybl-to-energnn"
-version = "0.1.0"
+version = "0.2.0"
 description = "Data conversion pipeline from pypowsybl networks to energnn graphs."
 authors = [
     { name = "Balthazar DONON", email = "balthazar.donon@rte-france.com" },
@@ -9,12 +9,12 @@ authors = [
 requires-python = ">=3.11"
 readme = "README.md"
 dependencies = [
-    "energnn>=0.2",
+    "energnn>=0.4.0.dev0",
     "pypowsybl>=1.14",
 ]
 
 [tool.uv.sources]
-energnn = { git = "https://github.com/energnn/energnn", branch = "main" }
+energnn = { git = "https://github.com/energnn/energnn", branch = "converter" }
 
 
 
@@ -51,7 +51,7 @@ line-length = 127
 max-line-length = 127
 extend-ignore = ["E203", "E701"]
 
-[tool.pytest]
+[tool.pytest.ini_options]
 testpaths = [
     "tests"
 ]

@@ -4,5 +4,11 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from .converter import Converter
-from .ready_to_use import *
+# The Converter and ElementsConverter abstract base classes live in energnn.converter;
+# they are re-exported here for convenience.
+from energnn.converter import Converter, ElementsConverter
+
+from . import elements, ready_to_use
+from .ready_to_use import *  # noqa: F401,F403
+
+__all__ = ["Converter", "ElementsConverter", "elements", "ready_to_use", *ready_to_use.__all__]

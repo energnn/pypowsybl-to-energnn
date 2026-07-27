@@ -4,7 +4,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from pypowsybl_to_energnn.converter import Converter
+from energnn.converter import Converter
+
 from pypowsybl_to_energnn.elements import (
     BatteriesConverter,
     BusesConverter,
