@@ -44,8 +44,7 @@ def test_addresses_are_consecutive_integers(network, graph):
         if hyper_edge_set.port_dict is not None:
             for port_array in hyper_edge_set.port_dict.values():
                 port_array = np.asarray(port_array)
-                # energnn stores ports as float arrays, but their values must be integers.
-                assert np.array_equal(port_array, np.round(port_array))
+                assert np.issubdtype(port_array.dtype, np.integer)
                 assert np.all(port_array >= 0)
                 assert np.all(port_array < n_addresses)
 

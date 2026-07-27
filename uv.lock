@@ -805,7 +805,7 @@ wheels = [
 [[package]]
 name = "energnn"
 version = "0.4.0.dev0"
-source = { git = "https://github.com/energnn/energnn?branch=converter#bfb189763a32366b3f197fd5e86c91cfa8d9eedb" }
+source = { git = "https://github.com/energnn/energnn?branch=int-addresses#70090e0f1a468f91f04d93ad1976127d01fb13ee" }
 dependencies = [
     { name = "chex" },
     { name = "cloudpickle" },
@@ -2970,7 +2970,7 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "energnn", git = "https://github.com/energnn/energnn?branch=converter" },
+    { name = "energnn", git = "https://github.com/energnn/energnn?branch=int-addresses" },
     { name = "pypowsybl", specifier = ">=1.14" },
 ]
 
