@@ -51,6 +51,10 @@ line-length = 127
 max-line-length = 127
 extend-ignore = ["E203", "E701"]
 
+[[tool.mypy.overrides]]
+module = "energnn.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = [
     "tests"
