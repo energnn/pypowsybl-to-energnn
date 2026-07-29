@@ -4,195 +4,141 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from abc import ABC, abstractmethod
-
 import pandas as pd
 import pypowsybl.network as pn
-from energnn.graph import HyperEdgeSetStructure
+from energnn.converter import ElementsConverter
 
 
-class ElementsConverter(ABC):
-    """Abstract base class for elements converters.
+class NetworkElementsConverter(ElementsConverter):
+    """Base class for elements converters that read a single pypowsybl network table.
 
-    :param address_list: List of address to extract from the network.
-    :param feature_list: List of features to extract from the network.
+    Subclasses only need to set ``_network_getter`` to the name of the ``pypowsybl.network.Network``
+    method that returns their table (e.g. ``"get_lines"``).
+
+    The ``"id"`` column is the index of pypowsybl tables, not an attribute: it is stripped from the
+    ``attributes`` requested from pypowsybl, and recovered as a regular column with ``reset_index``.
+
+    :cvar _network_getter: Name of the ``pypowsybl.network.Network`` method returning the table.
     """
 
-    def __init__(self, address_list: list[str] | None, feature_list: list[str] | None):
-        self.address_list = address_list
-        self.feature_list = feature_list
+    _network_getter: str
 
-        self.attributes = []
-        if self.address_list is not None:
-            self.attributes.extend([s for s in self.address_list if s != "id"])
-        if self.feature_list is not None:
-            self.attributes.extend(self.feature_list)
-
-    def __call__(self, *, network: pn.Network, **kwargs) -> tuple[pd.DataFrame, pd.DataFrame]:
-        df = self._get_table(network=network, **kwargs)
-
-        if self.address_list is not None:
-            df_address = df[self.address_list]
-        else:
-            df_address = None
-
-        if self.feature_list is not None:
-            df_feature = df[self.feature_list]
-        else:
-            df_feature = None
-
-        return df_address, df_feature
-
-    @abstractmethod
     def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        """Should return a pandas DataFrame containing addresses and features."""
-        raise NotImplementedError
-
-    def get_structure(self) -> HyperEdgeSetStructure:
-        """Get the edge structure of the element, useful for building an EnerGNN model."""
-        return HyperEdgeSetStructure(port_list=self.address_list, feature_list=self.feature_list)
+        attributes = [a for a in self.attributes if a != "id"]
+        return getattr(network, self._network_getter)(attributes=attributes).reset_index()
 
 
-class TwoWindingsTransformersConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_2_windings_transformers(attributes=self.attributes).reset_index()
+class TwoWindingsTransformersConverter(NetworkElementsConverter):
+    _network_getter = "get_2_windings_transformers"
 
 
-class ThreeWindingsTransformersConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_3_windings_transformers(attributes=self.attributes).reset_index()
+class ThreeWindingsTransformersConverter(NetworkElementsConverter):
+    _network_getter = "get_3_windings_transformers"
 
 
-class BatteriesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_batteries(attributes=self.attributes).reset_index()
+class BatteriesConverter(NetworkElementsConverter):
+    _network_getter = "get_batteries"
 
 
-class BranchesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_branches(attributes=self.attributes).reset_index()
+class BranchesConverter(NetworkElementsConverter):
+    _network_getter = "get_branches"
 
 
-class BusBarSectionsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_busbar_sections(attributes=self.attributes).reset_index()
+class BusBarSectionsConverter(NetworkElementsConverter):
+    _network_getter = "get_busbar_sections"
 
 
-class BusesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_buses(attributes=self.attributes).reset_index()
+class BusesConverter(NetworkElementsConverter):
+    _network_getter = "get_buses"
 
 
-class BusBreakerViewBusesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_bus_breaker_view_buses(attributes=self.attributes).reset_index()
+class BusBreakerViewBusesConverter(NetworkElementsConverter):
+    _network_getter = "get_bus_breaker_view_buses"
 
 
-class DanglingLinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dangling_lines(attributes=self.attributes).reset_index()
+class DanglingLinesConverter(NetworkElementsConverter):
+    _network_getter = "get_dangling_lines"
 
 
-class DanglingLinesGenerationConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dangling_lines_generation(attributes=self.attributes).reset_index()
+class DanglingLinesGenerationConverter(NetworkElementsConverter):
+    _network_getter = "get_dangling_lines_generation"
 
 
-class GeneratorsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_generators(attributes=self.attributes).reset_index()
+class GeneratorsConverter(NetworkElementsConverter):
+    _network_getter = "get_generators"
 
 
-class HVDCLinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_hvdc_lines(attributes=self.attributes).reset_index()
+class HVDCLinesConverter(NetworkElementsConverter):
+    _network_getter = "get_hvdc_lines"
 
 
-class LCCConverterStationsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_lcc_converter_stations(attributes=self.attributes).reset_index()
+class LCCConverterStationsConverter(NetworkElementsConverter):
+    _network_getter = "get_lcc_converter_stations"
 
 
-class LinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_lines(attributes=self.attributes).reset_index()
+class LinesConverter(NetworkElementsConverter):
+    _network_getter = "get_lines"
 
 
-class LoadsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_loads(attributes=self.attributes).reset_index()
+class LoadsConverter(NetworkElementsConverter):
+    _network_getter = "get_loads"
 
 
-class OperationalLimitsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_operational_limits(attributes=self.attributes).reset_index()
+class OperationalLimitsConverter(NetworkElementsConverter):
+    _network_getter = "get_operational_limits"
 
 
-class PhaseTapCHangersConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_phase_tap_changers(attributes=self.attributes).reset_index()
+class PhaseTapChangersConverter(NetworkElementsConverter):
+    _network_getter = "get_phase_tap_changers"
 
 
-class RatioTapChangersConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_ratio_tap_changers(attributes=self.attributes).reset_index()
+class RatioTapChangersConverter(NetworkElementsConverter):
+    _network_getter = "get_ratio_tap_changers"
 
 
-class ShuntCompensatorsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_shunt_compensators(attributes=self.attributes).reset_index()
+class ShuntCompensatorsConverter(NetworkElementsConverter):
+    _network_getter = "get_shunt_compensators"
 
 
-class StaticVarCompensatorsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_static_var_compensators(attributes=self.attributes).reset_index()
+class StaticVarCompensatorsConverter(NetworkElementsConverter):
+    _network_getter = "get_static_var_compensators"
 
 
-class SubstationsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_substations(attributes=self.attributes).reset_index()
+class SubstationsConverter(NetworkElementsConverter):
+    _network_getter = "get_substations"
 
 
-class SwitchesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_switches(attributes=self.attributes).reset_index()
+class SwitchesConverter(NetworkElementsConverter):
+    _network_getter = "get_switches"
 
 
-class VoltageLevelsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_voltage_levels(attributes=self.attributes).reset_index()
+class VoltageLevelsConverter(NetworkElementsConverter):
+    _network_getter = "get_voltage_levels"
 
 
-class VSCConverterStationsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_vsc_converter_stations(attributes=self.attributes).reset_index()
+class VSCConverterStationsConverter(NetworkElementsConverter):
+    _network_getter = "get_vsc_converter_stations"
 
 
-class TieLinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_tie_lines(attributes=self.attributes).reset_index()
+class TieLinesConverter(NetworkElementsConverter):
+    _network_getter = "get_tie_lines"
 
 
-class DCNodesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dc_nodes(attributes=self.attributes).reset_index()
+class DCNodesConverter(NetworkElementsConverter):
+    _network_getter = "get_dc_nodes"
 
 
-class DCLinesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dc_lines(attributes=self.attributes).reset_index()
+class DCLinesConverter(NetworkElementsConverter):
+    _network_getter = "get_dc_lines"
 
 
-class VoltageSourceConvertersConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_voltage_source_converters(attributes=self.attributes).reset_index()
+class VoltageSourceConvertersConverter(NetworkElementsConverter):
+    _network_getter = "get_voltage_source_converters"
 
 
-class DCGroundsConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dc_grounds(attributes=self.attributes).reset_index()
+class DCGroundsConverter(NetworkElementsConverter):
+    _network_getter = "get_dc_grounds"
 
 
-class DCBusesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_dc_buses(attributes=self.attributes).reset_index()
+class DCBusesConverter(NetworkElementsConverter):
+    _network_getter = "get_dc_buses"
