@@ -9,6 +9,17 @@
 from energnn.converter import Converter, ElementsConverter
 
 from . import elements, ready_to_use
+from .parametric import MergedTable, PypowsyblConverter, TableSpec, resolve_spec
 from .ready_to_use import *  # noqa: F401,F403
 
-__all__ = ["Converter", "ElementsConverter", "elements", "ready_to_use", *ready_to_use.__all__]
+__all__ = [
+    "Converter",
+    "ElementsConverter",
+    "MergedTable",
+    "PypowsyblConverter",
+    "TableSpec",
+    "elements",
+    "ready_to_use",
+    "resolve_spec",
+    *ready_to_use.__all__,
+]
