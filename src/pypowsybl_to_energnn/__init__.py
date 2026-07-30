@@ -8,18 +8,17 @@
 # they are re-exported here for convenience.
 from energnn.converter import Converter, ElementsConverter
 
-from . import elements, ready_to_use
-from .parametric import MergedTable, PypowsyblConverter, TableSpec, resolve_spec
+from . import ready_to_use
+from .converter import PypowsyblConverter
+from .elements import TableConverter, isolate_dangling_ports
 from .ready_to_use import *  # noqa: F401,F403
 
 __all__ = [
     "Converter",
     "ElementsConverter",
-    "MergedTable",
     "PypowsyblConverter",
-    "TableSpec",
-    "elements",
+    "TableConverter",
+    "isolate_dangling_ports",
     "ready_to_use",
-    "resolve_spec",
     *ready_to_use.__all__,
 ]

@@ -4,141 +4,82 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Callable, Union
+
 import pandas as pd
-import pypowsybl.network as pn
 from energnn.converter import ElementsConverter
 
 
-class NetworkElementsConverter(ElementsConverter):
-    """Base class for elements converters that read a single pypowsybl network table.
+def isolate_dangling_ports(df: pd.DataFrame, ports: list[str]) -> pd.DataFrame:
+    """Replace empty (``''`` or NaN) port values by per-element sentinel addresses.
 
-    Subclasses only need to set ``_network_getter`` to the name of the ``pypowsybl.network.Network``
-    method that returns their table (e.g. ``"get_lines"``).
+    pypowsybl uses ``''`` when a connection point does not exist: ``bus_id`` of an element
+    disconnected in the bus view, ``substation_id`` of a voltage level without substation, ...
+    Left as-is, such values would become one ordinary shared address, spuriously connecting
+    every such element through a single phantom node. Each empty port is instead rerouted to
+    its own fresh address — deterministic (derived from the element id and the column name),
+    so the graph does not depend on row order and is reproducible across runs.
 
-    The ``"id"`` column is the index of pypowsybl tables, not an attribute: it is stripped from the
-    ``attributes`` requested from pypowsybl, and recovered as a regular column with ``reset_index``.
+    :param df: Table with one row per element, holding an ``id`` column (the row index is
+        used as element id otherwise).
+    :param ports: Names of the port columns to process.
+    """
+    masks = {column: df[column].isna() | (df[column] == "") for column in ports}
+    if not any(mask.any() for mask in masks.values()):
+        return df
 
-    :cvar _network_getter: Name of the ``pypowsybl.network.Network`` method returning the table.
+    df = df.copy()
+    ids = df["id"] if "id" in df.columns else df.index.to_series()
+    for column, mask in masks.items():
+        df.loc[mask, column] = ids[mask].map(lambda element_id: f"__dangling__{element_id}__{column}")
+    return df
+
+
+class TableConverter(ElementsConverter):
+    """Elements converter for one class of hyper-edges, driven by a table.
+
+    On top of the ports/features split inherited from :class:`ElementsConverter`, this class
+    validates that every requested column exists (with an explicit error message instead of a
+    downstream pandas ``KeyError``) and isolates the dangling ports
+    (see :func:`isolate_dangling_ports`).
+
+    The table is either:
+
+    - the name of a ``pypowsybl.network.Network`` method (e.g. ``"get_lines"``), called with
+      ``all_attributes=True``, the index recovered as a regular ``id`` column — the common
+      case;
+    - any callable returning a :class:`pandas.DataFrame` with one row per element. It
+      receives all the keyword arguments of the conversion call verbatim (``network=...``
+      among them), so it can filter or join pypowsybl tables, or read a table that comes from
+      outside pypowsybl entirely — e.g. ``lambda gen_costs, **_: gen_costs`` picks a
+      DataFrame passed as ``converter(network=network, gen_costs=...)``.
+
+    :param table: pypowsybl getter name, or callable returning the table.
+    :param ports: Names of the columns holding addresses (bus ids, parent element ids, ...),
+        or ``None``.
+    :param features: Names of the columns holding features, or ``None``.
     """
 
-    _network_getter: str
+    def __init__(
+        self,
+        table: Union[str, Callable[..., pd.DataFrame]],
+        ports: list[str] | None = None,
+        features: list[str] | None = None,
+    ):
+        super().__init__(port_list=ports, feature_list=features)
+        self.table = table
 
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        attributes = [a for a in self.attributes if a != "id"]
-        return getattr(network, self._network_getter)(attributes=attributes).reset_index()
+    def _get_table(self, **kwargs) -> pd.DataFrame:
+        if isinstance(self.table, str):
+            df = getattr(kwargs["network"], self.table)(all_attributes=True).reset_index()
+        else:
+            df = self.table(**kwargs)
 
+        missing = [c for c in self.attributes if c not in df.columns]
+        if missing:
+            name = self.table if isinstance(self.table, str) else getattr(self.table, "__name__", repr(self.table))
+            raise ValueError(f"Columns {missing} not found in '{name}'; available: {sorted(df.columns)}.")
 
-class TwoWindingsTransformersConverter(NetworkElementsConverter):
-    _network_getter = "get_2_windings_transformers"
-
-
-class ThreeWindingsTransformersConverter(NetworkElementsConverter):
-    _network_getter = "get_3_windings_transformers"
-
-
-class BatteriesConverter(NetworkElementsConverter):
-    _network_getter = "get_batteries"
-
-
-class BranchesConverter(NetworkElementsConverter):
-    _network_getter = "get_branches"
-
-
-class BusBarSectionsConverter(NetworkElementsConverter):
-    _network_getter = "get_busbar_sections"
-
-
-class BusesConverter(NetworkElementsConverter):
-    _network_getter = "get_buses"
-
-
-class BusBreakerViewBusesConverter(NetworkElementsConverter):
-    _network_getter = "get_bus_breaker_view_buses"
-
-
-class DanglingLinesConverter(NetworkElementsConverter):
-    _network_getter = "get_dangling_lines"
-
-
-class DanglingLinesGenerationConverter(NetworkElementsConverter):
-    _network_getter = "get_dangling_lines_generation"
-
-
-class GeneratorsConverter(NetworkElementsConverter):
-    _network_getter = "get_generators"
-
-
-class HVDCLinesConverter(NetworkElementsConverter):
-    _network_getter = "get_hvdc_lines"
-
-
-class LCCConverterStationsConverter(NetworkElementsConverter):
-    _network_getter = "get_lcc_converter_stations"
-
-
-class LinesConverter(NetworkElementsConverter):
-    _network_getter = "get_lines"
-
-
-class LoadsConverter(NetworkElementsConverter):
-    _network_getter = "get_loads"
-
-
-class OperationalLimitsConverter(NetworkElementsConverter):
-    _network_getter = "get_operational_limits"
-
-
-class PhaseTapChangersConverter(NetworkElementsConverter):
-    _network_getter = "get_phase_tap_changers"
-
-
-class RatioTapChangersConverter(NetworkElementsConverter):
-    _network_getter = "get_ratio_tap_changers"
-
-
-class ShuntCompensatorsConverter(NetworkElementsConverter):
-    _network_getter = "get_shunt_compensators"
-
-
-class StaticVarCompensatorsConverter(NetworkElementsConverter):
-    _network_getter = "get_static_var_compensators"
-
-
-class SubstationsConverter(NetworkElementsConverter):
-    _network_getter = "get_substations"
-
-
-class SwitchesConverter(NetworkElementsConverter):
-    _network_getter = "get_switches"
-
-
-class VoltageLevelsConverter(NetworkElementsConverter):
-    _network_getter = "get_voltage_levels"
-
-
-class VSCConverterStationsConverter(NetworkElementsConverter):
-    _network_getter = "get_vsc_converter_stations"
-
-
-class TieLinesConverter(NetworkElementsConverter):
-    _network_getter = "get_tie_lines"
-
-
-class DCNodesConverter(NetworkElementsConverter):
-    _network_getter = "get_dc_nodes"
-
-
-class DCLinesConverter(NetworkElementsConverter):
-    _network_getter = "get_dc_lines"
-
-
-class VoltageSourceConvertersConverter(NetworkElementsConverter):
-    _network_getter = "get_voltage_source_converters"
-
-
-class DCGroundsConverter(NetworkElementsConverter):
-    _network_getter = "get_dc_grounds"
-
-
-class DCBusesConverter(NetworkElementsConverter):
-    _network_getter = "get_dc_buses"
+        if self.port_list is not None:
+            df = isolate_dangling_ports(df, self.port_list)
+        return df

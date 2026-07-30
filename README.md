@@ -5,9 +5,11 @@ This helper package is part of the [EnerGNN](https://github.com/energnn/energnn)
 The `Converter` and `ElementsConverter` abstract base classes live in `energnn.converter`;
 this package only provides their **PyPowSyBl** implementations:
 
-- A set of elements converters, one per PyPowSyBl network table (buses, lines, generators, ...),
-  that extract addresses and features from a `pypowsybl.network.Network`.
-- Ready-to-use converters for common use cases, in `pypowsybl_to_energnn.ready_to_use`.
+- `TableConverter`, an elements converter that extracts one class of hyper-edges from a
+  table — a PyPowSyBl getter or any callable returning a DataFrame — and handles the
+  generic plumbing (ports/features split, column validation, dangling-port isolation).
+- Ready-to-use configurations for common use cases — explicit, copyable dicts mapping each
+  hyper-edge class to its `TableConverter` — in `pypowsybl_to_energnn.ready_to_use`.
 ---
 
 ## Supported Formats
@@ -40,28 +42,30 @@ Multi Graph. Each entry of its `elements_converter_dict` produces one class of h
 defined by a list of *ports* (columns holding addresses, e.g. bus ids) and a list of
 *features* (columns holding numerical values).
 
-Multiple ready-to-use implementations are available in `pypowsybl_to_energnn.ready_to_use`.
+Ready-to-use configurations are available in `pypowsybl_to_energnn.ready_to_use`.
 ```python
+import pypowsybl.loadflow as lf
 import pypowsybl.network as pn
 import pypowsybl_to_energnn as pe
 from energnn.graph import Graph
 
-input_converter = pe.ACLoadFlowInputConverter()
-output_converter = pe.ACLoadFlowOutputConverter()
+input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_INPUT)
+output_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_OUTPUT)
 
 network = pn.create_ieee14()  # Or any other PyPowSyBl network
+lf.run_ac(network)  # The output columns are NaN until a power flow has run
 
 input_graph: Graph = input_converter(network=network)
 output_graph: Graph = output_converter(network=network)
 ```
 
 Graphs are built on a numpy backend by default. To get graphs on another backend
-(e.g. jax), set the `backend` attribute of the converter:
+(e.g. jax), pass the `backend` argument:
 
 ```python
 from energnn.graph import JaxBackend
 
-input_converter.backend = JaxBackend()
+input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_INPUT, backend=JaxBackend())
 ```
 
 Converters can also return the structure of the graphs they output,
@@ -77,86 +81,77 @@ model = TinyRecurrentEquivariantGNN(
 ```
 ---
 
-## Custom PyPowSyBl Converters
+## Custom Configurations
 
-If your use case requires access to features that are not covered by the predefined converters,
-then you can implement your own converter and specify which ports and which features you want to
-extract, as long as they are supported by **PyPowSyBl**.
+A configuration is a plain dict mapping each hyper-edge class to a `TableConverter` — the
+PyPowSyBl getter (or callable, see below) it reads, its port columns (addresses: bus ids,
+parent element ids, ...) and its feature columns. To adjust a ready-to-use configuration at
+the margin, copy the dict and replace or add entries; to start from scratch, write your own:
 
 ```python
 import pypowsybl_to_energnn as pe
 
-class MyConverter(pe.Converter):
-    elements_converter_dict = {
-        "buses": pe.elements.BusesConverter(["id"], None),
-        "generators": pe.elements.GeneratorsConverter(["bus_id"], ["target_p", "energy_source"]),
-    }
+config = dict(pe.AC_LOAD_FLOW_INPUT)
+config["generators"] = pe.TableConverter("get_generators", ports=["bus_id"], features=["target_p", "energy_source"])
+del config["batteries"]
+
+converter = pe.PypowsyblConverter(config)
 ```
 
-Note that the ``"id"`` column (the index of PyPowSyBl tables) can be used as a port like any
-other column. One elements converter is available per PyPowSyBl network table:
-`BusesConverter`, `LinesConverter`, `GeneratorsConverter`, `LoadsConverter`,
-`TwoWindingsTransformersConverter`, `ShuntCompensatorsConverter`, ... (see
-`pypowsybl_to_energnn.elements` for the full list).
+Note that the `"id"` column (the index of PyPowSyBl tables, recovered as a regular column)
+can be used as a port like any other column. `TableConverter` validates the requested
+columns (with an explicit error listing the available ones) and isolates the dangling ports:
+an empty connection point (e.g. `bus_id` of a disconnected element) is rerouted to its own
+sentinel address instead of spuriously connecting every such element through a shared
+phantom node.
 ---
 
-## Custom Features
+## Custom Tables
 
-If you want to extract features that are combinations of **PyPowSyBl** features,
-then you can implement your own elements converter. Subclasses of
-`NetworkElementsConverter` read a single network table (set by `_network_getter`),
-but `_get_table` can be overridden to build arbitrary columns.
+The table of a `TableConverter` can also be any callable returning a DataFrame with one row
+per hyper-edge. It receives all the arguments of the conversion call verbatim
+(`network=...` among them), so derived features, filtered rows or joined satellite tables
+are just pandas:
 
 ```python
-import pandas as pd
-import pypowsybl.network as pn
 import pypowsybl_to_energnn as pe
 
-class SquaredVoltageBusesConverter(pe.elements.NetworkElementsConverter):
-    """Extracts bus ids and squared voltage magnitudes."""
-    _network_getter = "get_buses"
+def transformers_with_ratio_tap_changers(network, **_):
+    df = network.get_2_windings_transformers(all_attributes=True)
+    rtc = network.get_ratio_tap_changers(all_attributes=True).add_prefix("rtc_")
+    return df.join(rtc).reset_index()
 
-    def _get_table(self, *, network: pn.Network, **kwargs) -> pd.DataFrame:
-        df = network.get_buses(attributes=["v_mag"]).reset_index()
-        df["squared_v_mag"] = df["v_mag"] ** 2
-        return df
-
-class MyConverter(pe.Converter):
-    elements_converter_dict = {
-        "buses": SquaredVoltageBusesConverter(["id"], ["squared_v_mag"]),
-    }
+config = dict(pe.AC_LOAD_FLOW_INPUT)
+config["two_windings_transformers"] = pe.TableConverter(
+    transformers_with_ratio_tap_changers,
+    ports=["bus1_id", "bus2_id"],
+    features=["r", "x", "rho", "alpha", "rtc_tap", "rtc_target_v"],
+)
 ```
 ---
 
 ## Combining **PyPowSyBl** networks with other data sources
 
-All the arguments passed to a converter are forwarded verbatim to each of its elements
-converters, so you can implement elements converters that combine the network with any
-other data source.
+Since the conversion arguments are forwarded to every table callable, a table does not have
+to come from PyPowSyBl at all — any DataFrame passed to the conversion call can become a
+class of hyper-edges, and its PyPowSyBl ids (bus ids, element ids) connect it to the rest
+of the graph:
 
 ```python
 import pandas as pd
 import pypowsybl.network as pn
 import pypowsybl_to_energnn as pe
-from energnn.converter import ElementsConverter
 
-class MyBusesConverter(ElementsConverter):
-    def _get_table(self, *, network: pn.Network, other_table: pd.DataFrame, **kwargs) -> pd.DataFrame:
-        df = ...  # Combine the data sources
-        return df
+config = dict(pe.AC_LOAD_FLOW_INPUT)
+config["generator_costs"] = pe.TableConverter(
+    lambda gen_costs, **_: gen_costs, ports=["generator_id"], features=["marginal_cost"]
+)
 
-class MyConverter(pe.Converter):
-    elements_converter_dict = {
-        "buses": MyBusesConverter(["id"], None),
-    }
-
-converter = MyConverter()
+converter = pe.PypowsyblConverter(config)
 network = pn.create_ieee14()
-other_table = pd.read_csv("other_table.csv")
-graph = converter(network=network, other_table=other_table)
+gen_costs = pd.read_csv("generator_costs.csv")
+graph = converter(network=network, gen_costs=gen_costs)
 ```
-
-Notice that the example above considers a dataframe, but any other data type can be used.
 ---
 
 ## Development
