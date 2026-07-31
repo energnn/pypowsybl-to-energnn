@@ -15,27 +15,33 @@ from .base import PypowsyblElements
 class ShuntCompensators(PypowsyblElements):
     """Shunt compensators (``get_shunt_compensators``), connected to their bus.
 
-    The default features are the shunt data of the AC problem: the admittance of the current
-    section, the section counts, and the voltage regulation settings. Purely reactive
-    devices, they carry nothing in the DC problem and are omitted from the DC configurations.
+    The feature bundles of the AC power flow are exposed as class constants, additive at
+    will: the problem data (admittance of the current section, section counts, voltage
+    regulation settings) and the state solved by a first AC load flow (``p``/``q``/``i``),
+    concatenated by default. Purely reactive devices, they carry nothing in the DC problem
+    and are omitted from the DC configurations (no ``DC_*`` constants).
 
     :param ports: Address columns, the connection bus by default.
-    :param features: Feature columns, the AC problem data by default.
+    :param features: Feature columns of the shunt table, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
+        ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     """
+
+    AC_LOAD_FLOW_INPUT_FEATURES = (
+        "g",
+        "b",
+        "max_section_count",
+        "section_count",
+        "voltage_regulation_on",
+        "target_v",
+        "target_deadband",
+        "connected",
+    )
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
 
     def __init__(
         self,
         ports: Sequence[str] = ("bus_id",),
-        features: Sequence[str] = (
-            "g",
-            "b",
-            "max_section_count",
-            "section_count",
-            "voltage_regulation_on",
-            "target_v",
-            "target_deadband",
-            "connected",
-        ),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
     ):
         super().__init__(ports=ports, features=features)
 

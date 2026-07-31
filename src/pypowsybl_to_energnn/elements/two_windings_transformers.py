@@ -16,10 +16,12 @@ from .operational_limits import selected_permanent_current_limits
 class TwoWindingsTransformers(PypowsyblElements):
     """Two-windings transformers (``get_2_windings_transformers``), connected to their two buses.
 
-    The default features are the transformer data of the AC problem: impedance, magnetizing
-    admittance, ratings, and the current transformation ratio and phase shift (``rho``,
-    ``alpha`` — the effect of the tap changers on the pi-model). The tap changer devices
-    themselves (positions, regulation settings) live in the satellite tables
+    The feature bundles of the power flow grid (solver × role) are exposed as class
+    constants, additive at will. The default features concatenate the AC problem data —
+    impedance, magnetizing admittance, ratings, and the current transformation ratio and
+    phase shift (``rho``, ``alpha``, the effect of the tap changers on the pi-model) — and
+    the state solved by a first AC load flow. The tap changer devices themselves
+    (positions, regulation settings) live in the satellite tables
     ``get_ratio_tap_changers``/``get_phase_tap_changers``: like every joined table, each has
     its own feature list parameter, naming the columns to bring in (``None`` = not joined).
     Joined columns land prefixed (``ratio_tap_changer_tap``, ...) so that they cannot collide
@@ -27,7 +29,8 @@ class TwoWindingsTransformers(PypowsyblElements):
     downstream) for transformers without the device.
 
     :param ports: Address columns, the two extremity buses by default.
-    :param features: Feature columns of the transformer table, the AC problem data by default.
+    :param features: Feature columns of the transformer table,
+        ``AC_LOAD_FLOW_INPUT_FEATURES`` + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param ratio_tap_changer_features: Columns of ``get_ratio_tap_changers`` to join,
         prefixed by ``ratio_tap_changer_`` in the graph — ``RATIO_TAP_CHANGER_FEATURES`` is
         a sensible full bundle. ``None`` (default) leaves the table out.
@@ -38,6 +41,23 @@ class TwoWindingsTransformers(PypowsyblElements):
         among ``("current_limit1", "current_limit2")`` — see
         :func:`selected_permanent_current_limits`. ``None`` (default) leaves them out.
     """
+
+    AC_LOAD_FLOW_INPUT_FEATURES = (
+        "r",
+        "x",
+        "g",
+        "b",
+        "rated_u1",
+        "rated_u2",
+        "rated_s",
+        "rho",
+        "alpha",
+        "connected1",
+        "connected2",
+    )
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p1", "q1", "i1", "p2", "q2", "i2")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("x", "rho", "alpha", "connected1", "connected2")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p1", "p2")
 
     RATIO_TAP_CHANGER_FEATURES = ("tap", "low_tap", "high_tap", "regulating", "target_v", "target_deadband")
     PHASE_TAP_CHANGER_FEATURES = (
@@ -53,19 +73,7 @@ class TwoWindingsTransformers(PypowsyblElements):
     def __init__(
         self,
         ports: Sequence[str] = ("bus1_id", "bus2_id"),
-        features: Sequence[str] = (
-            "r",
-            "x",
-            "g",
-            "b",
-            "rated_u1",
-            "rated_u2",
-            "rated_s",
-            "rho",
-            "alpha",
-            "connected1",
-            "connected2",
-        ),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
         *,
         ratio_tap_changer_features: Sequence[str] | None = None,
         phase_tap_changer_features: Sequence[str] | None = None,

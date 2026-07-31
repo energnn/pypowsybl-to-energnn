@@ -6,19 +6,24 @@
 
 """Explicit configurations for the AC power flow, in the bus/branch (bus view) topology.
 
-``AC_LOAD_FLOW_INPUT`` carries the data of the AC problem: it is simply every element class
-with its defaults, since the class defaults *are* the AC problem data — open a class
-(:class:`Lines`, :class:`Generators`, ...) to read its column lists and options.
-``AC_LOAD_FLOW_OUTPUT`` carries the state the problem solves (``p``/``q``/``i`` per element,
-``v_mag`` on the buses) — output columns are NaN until a power flow has run on the network,
-so run one first. The typical GNN input concatenates both: the problem warm-started by a
-first power flow.
+Three assemblies of the per-class feature bundles (open a class — :class:`Lines`,
+:class:`Generators`, ... — to read the column lists):
+
+- ``AC_LOAD_FLOW_WARM_START_INPUT`` — every class with its defaults: the problem data
+  *and* the state solved by a first AC load flow, which is the realistic GNN input (run a
+  power flow before converting; unsolved columns are NaN, 0 downstream);
+- ``AC_LOAD_FLOW_INPUT`` — the problem data alone (impedances, limits, setpoints), for the
+  simulator-proxy setting;
+- ``AC_LOAD_FLOW_OUTPUT`` — the solved state alone (``p``/``q``/``i`` per element,
+  ``v_mag`` on the buses), the typical prediction target.
 
 These dicts are plain data meant to be copied and amended entry by entry
-(see :class:`PypowsyblConverter`). Output notes: the ports let predictions be matched back
-to the network (drop them when redundant with an input graph extracted from the same
-network); phase angles are excluded from the bus outputs (not permutation equivariant); HVDC
-lines carry no output column and are omitted entirely.
+(see :class:`PypowsyblConverter`). ``regulated_bus_id`` ports (generators, SVCs, VSC
+stations) point to the remotely regulated bus — an edge toward a possibly distant node,
+essential to voltage control. Output notes: the ports let predictions be matched back to
+the network (drop them when redundant with an input graph extracted from the same network);
+phase angles are excluded from the bus outputs (not permutation equivariant); HVDC lines
+carry no output column and are omitted entirely.
 """
 
 from pypowsybl_to_energnn.elements import (
@@ -36,7 +41,7 @@ from pypowsybl_to_energnn.elements import (
     VscConverterStations,
 )
 
-AC_LOAD_FLOW_INPUT = {
+AC_LOAD_FLOW_WARM_START_INPUT = {
     "buses": Buses(),
     "lines": Lines(),
     "two_windings_transformers": TwoWindingsTransformers(),
@@ -51,16 +56,37 @@ AC_LOAD_FLOW_INPUT = {
     "vsc_converter_stations": VscConverterStations(),
 }
 
+AC_LOAD_FLOW_INPUT = {
+    "buses": Buses(features=None),
+    "lines": Lines(features=Lines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.AC_LOAD_FLOW_INPUT_FEATURES),
+    "generators": Generators(features=Generators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "loads": Loads(features=Loads.AC_LOAD_FLOW_INPUT_FEATURES),
+    "shunts": ShuntCompensators(features=ShuntCompensators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "static_var_compensators": StaticVarCompensators(features=StaticVarCompensators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "batteries": Batteries(features=Batteries.AC_LOAD_FLOW_INPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "hvdc_lines": HvdcLines(features=HvdcLines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "lcc_converter_stations": LccConverterStations(features=LccConverterStations.AC_LOAD_FLOW_INPUT_FEATURES),
+    "vsc_converter_stations": VscConverterStations(features=VscConverterStations.AC_LOAD_FLOW_INPUT_FEATURES),
+}
+
 AC_LOAD_FLOW_OUTPUT = {
-    "buses": Buses(features=("v_mag",)),
-    "lines": Lines(features=("p1", "q1", "i1", "p2", "q2", "i2")),
-    "two_windings_transformers": TwoWindingsTransformers(features=("p1", "q1", "i1", "p2", "q2", "i2")),
-    "generators": Generators(ports=("bus_id",), features=("p", "q", "i")),
-    "loads": Loads(features=("p", "q", "i")),
-    "shunts": ShuntCompensators(features=("p", "q", "i")),
-    "static_var_compensators": StaticVarCompensators(ports=("bus_id",), features=("p", "q", "i")),
-    "batteries": Batteries(features=("p", "q", "i")),
-    "dangling_lines": DanglingLines(features=("p", "q", "i")),
-    "lcc_converter_stations": LccConverterStations(ports=("bus_id",), features=("p", "q", "i")),
-    "vsc_converter_stations": VscConverterStations(ports=("bus_id",), features=("p", "q", "i")),
+    "buses": Buses(features=Buses.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "lines": Lines(features=Lines.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "generators": Generators(ports=("bus_id",), features=Generators.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "loads": Loads(features=Loads.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "shunts": ShuntCompensators(features=ShuntCompensators.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "static_var_compensators": StaticVarCompensators(
+        ports=("bus_id",), features=StaticVarCompensators.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
+    "batteries": Batteries(features=Batteries.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "lcc_converter_stations": LccConverterStations(
+        ports=("bus_id",), features=LccConverterStations.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
+    "vsc_converter_stations": VscConverterStations(
+        ports=("bus_id",), features=VscConverterStations.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
 }

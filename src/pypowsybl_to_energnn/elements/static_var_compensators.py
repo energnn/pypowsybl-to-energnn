@@ -17,7 +17,9 @@ class StaticVarCompensators(PypowsyblElements):
     to the bus they regulate.
 
     Like generators, they may regulate the voltage of a remote bus: the ``regulated_bus_id``
-    port points to it. Purely reactive devices, they are omitted from the DC configurations.
+    port points to it. Purely reactive devices, they are omitted from the DC configurations
+    (no ``DC_*`` constants). The default features concatenate the AC problem data and the
+    state solved by a first AC load flow (``p``/``q``/``i``).
 
     The ``standbyAutomaton`` extension (standby mode and its voltage thresholds/setpoints) is
     a satellite table indexed by compensator id: like every joined table, it has its own
@@ -26,11 +28,15 @@ class StaticVarCompensators(PypowsyblElements):
     compensators without the extension.
 
     :param ports: Address columns, the connection bus and the regulated bus by default.
-    :param features: Feature columns of the compensator table, the AC problem data by default.
+    :param features: Feature columns of the compensator table,
+        ``AC_LOAD_FLOW_INPUT_FEATURES`` + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param standby_automaton_features: Columns of ``get_extensions("standbyAutomaton")`` to
         join, prefixed by ``standby_automaton_`` in the graph — ``STANDBY_AUTOMATON_FEATURES``
         is the full bundle. ``None`` (default) leaves the table out.
     """
+
+    AC_LOAD_FLOW_INPUT_FEATURES = ("b_min", "b_max", "target_v", "target_q", "regulation_mode", "regulating", "connected")
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
 
     STANDBY_AUTOMATON_FEATURES = (
         "standby",
@@ -44,7 +50,7 @@ class StaticVarCompensators(PypowsyblElements):
     def __init__(
         self,
         ports: Sequence[str] = ("bus_id", "regulated_bus_id"),
-        features: Sequence[str] = ("b_min", "b_max", "target_v", "target_q", "regulation_mode", "regulating", "connected"),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
         *,
         standby_automaton_features: Sequence[str] | None = None,
     ):

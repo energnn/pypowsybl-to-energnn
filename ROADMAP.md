@@ -25,8 +25,11 @@ des dicts de configuration, peu navigables pour le public visé (stagiaires/doct
 design retenu le déplace dans **une classe par type d'objet pypowsybl**, un module par
 classe (`elements/lines.py`, `elements/generators.py`, ...), en assumant la verbosité :
 
-- **Chaque classe porte ses défauts** — ports et features du problème AC, lisibles dans sa
-  signature — et implémente la conversion en pandas explicite dans sa méthode
+- **Chaque classe porte ses jeux de features en constantes** — la grille solveur × rôle
+  `AC/DC_LOAD_FLOW_INPUT/OUTPUT_FEATURES`, cumulable à volonté — et ses défauts : ports AC
+  et features `AC_INPUT + AC_OUTPUT`, c'est-à-dire le problème **warm-starté par un
+  premier load flow AC** (l'usage réel ne fait pas de proxy de simulateur : l'entrée part
+  d'un état résolu). Elle implémente la conversion en pandas explicite dans sa méthode
   `build_table`, l'unique point d'extension. La plomberie commune (split ports/features,
   validation des colonnes avec message explicite, isolation des ports pendants
   `isolate_dangling_ports` — `''` et NaN re-routés vers des adresses sentinelles
@@ -44,9 +47,11 @@ classe (`elements/lines.py`, `elements/generators.py`, ...), en assumant la verb
   raccorder les units aux générateurs demande `Generators(ports=("id", ...))`).
 - **Une config = un dict** `{classe: elements converter}`, assemblé par
   `PypowsyblConverter` (qui impose aussi `per_unit`). Override = copier le dict et
-  remplacer ou ajouter des entrées. Les configs `ready_to_use`
-  (`AC_LOAD_FLOW_INPUT`/`OUTPUT`, restrictions actives `DC_*` — invariant dc ⊆ ac testé)
-  deviennent triviales : l'entrée AC est chaque classe avec ses défauts.
+  remplacer ou ajouter des entrées. Les configs `ready_to_use` deviennent du pur
+  assemblage des constantes : `AC_LOAD_FLOW_WARM_START_INPUT` (chaque classe avec ses
+  défauts — l'entrée GNN réaliste), `AC_LOAD_FLOW_INPUT` (problème seul, cadre proxy),
+  `AC_LOAD_FLOW_OUTPUT`, et les restrictions actives `DC_*` (invariant dc ⊆ ac testé sur
+  les constantes de classe).
 - **`TableConverter` reste l'échappatoire ouverte** : nom de getter pypowsybl ou callable
   recevant les kwargs de l'appel de conversion (`network=...` compris) — features
   dérivées, vue bus/breaker (démontrée dans les tests), sources exogènes raccordées au

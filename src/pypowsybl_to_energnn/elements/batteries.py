@@ -15,18 +15,25 @@ from .base import PypowsyblElements
 class Batteries(PypowsyblElements):
     """Batteries (``get_batteries``), connected to their bus.
 
-    The default features are the battery data of the AC problem: setpoints and active and
-    reactive limits. The solved state (``p``/``q``/``i``) is requested explicitly in the
-    output configurations.
+    The feature bundles of the power flow grid (solver × role) are exposed as class
+    constants, additive at will. The default features concatenate the AC problem data
+    (setpoints, active and reactive limits) and the state solved by a first AC load flow
+    (``p``/``q``/``i``).
 
     :param ports: Address columns, the connection bus by default.
-    :param features: Feature columns, the AC problem data by default.
+    :param features: Feature columns of the battery table, ``AC_LOAD_FLOW_INPUT_FEATURES``
+        + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     """
+
+    AC_LOAD_FLOW_INPUT_FEATURES = ("max_p", "min_p", "min_q", "max_q", "target_p", "target_q", "connected")
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("max_p", "min_p", "target_p", "connected")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)
 
     def __init__(
         self,
         ports: Sequence[str] = ("bus_id",),
-        features: Sequence[str] = ("max_p", "min_p", "min_q", "max_q", "target_p", "target_q", "connected"),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
     ):
         super().__init__(ports=ports, features=features)
 

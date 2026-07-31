@@ -16,22 +16,31 @@ from .operational_limits import selected_permanent_current_limits
 class Lines(PypowsyblElements):
     """AC lines (``get_lines``), one hyper-edge per line, connected to its two buses.
 
-    The default features are the line data of the AC power flow problem: the pi-model
-    impedance and shunt admittances, and the connection statuses. The solved state
-    (``p1``/``q1``/``i1``/...) is requested explicitly in the output configurations.
+    The feature bundles of the power flow grid (solver × role) are exposed as class
+    constants, additive at will. The default features concatenate the AC problem data
+    (pi-model impedance and shunt admittances, connection statuses) and the state solved by a
+    first AC load flow — in practice the GNN input starts from a solved state, so run a power
+    flow before converting (unsolved columns are NaN, 0 downstream). Restrict to
+    ``AC_LOAD_FLOW_INPUT_FEATURES`` for the pure problem data.
 
     :param ports: Address columns, the two extremity buses by default.
-    :param features: Feature columns of the line table, the AC problem data by default.
+    :param features: Feature columns of the line table, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
+        ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param operational_limit_features: Selected permanent current limit columns to join,
         among ``("current_limit1", "current_limit2")`` — NaN (0 downstream) for lines
         without one, see :func:`selected_permanent_current_limits`. ``None`` (default)
         leaves them out.
     """
 
+    AC_LOAD_FLOW_INPUT_FEATURES = ("r", "x", "g1", "b1", "g2", "b2", "connected1", "connected2")
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p1", "q1", "i1", "p2", "q2", "i2")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("x", "connected1", "connected2")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p1", "p2")
+
     def __init__(
         self,
         ports: Sequence[str] = ("bus1_id", "bus2_id"),
-        features: Sequence[str] = ("r", "x", "g1", "b1", "g2", "b2", "connected1", "connected2"),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
         *,
         operational_limit_features: Sequence[str] | None = None,
     ):

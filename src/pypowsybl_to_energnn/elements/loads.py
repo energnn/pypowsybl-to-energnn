@@ -15,15 +15,26 @@ from .base import PypowsyblElements
 class Loads(PypowsyblElements):
     """Loads (``get_loads``), connected to their bus.
 
-    The default features are the load data of the AC problem: the constant power demand
-    (``p0``/``q0``) and the connection status. The solved state (``p``/``q``/``i``) is
-    requested explicitly in the output configurations.
+    The feature bundles of the power flow grid (solver × role) are exposed as class
+    constants, additive at will. The default features concatenate the AC problem data — the
+    constant power demand (``p0``/``q0``) and the connection status — and the state solved
+    by a first AC load flow (``p``/``q``/``i``).
 
     :param ports: Address columns, the connection bus by default.
-    :param features: Feature columns, the AC problem data by default.
+    :param features: Feature columns of the load table, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
+        ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     """
 
-    def __init__(self, ports: Sequence[str] = ("bus_id",), features: Sequence[str] = ("p0", "q0", "connected")):
+    AC_LOAD_FLOW_INPUT_FEATURES = ("p0", "q0", "connected")
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("p0", "connected")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)
+
+    def __init__(
+        self,
+        ports: Sequence[str] = ("bus_id",),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
+    ):
         super().__init__(ports=ports, features=features)
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:

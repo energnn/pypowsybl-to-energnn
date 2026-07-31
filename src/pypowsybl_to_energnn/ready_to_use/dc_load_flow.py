@@ -6,12 +6,12 @@
 
 """Explicit configurations for the DC power flow: the active-only subsets of the AC ones.
 
-Column by column, these are the AC configurations of :mod:`.ac_load_flow` with the
-reactive- and voltage-related columns dropped (an invariant checked by the test suite).
-Reactive-only devices (shunts, static VAR compensators) carry nothing in the DC problem and
-are omitted entirely, as are the voltage-regulation ports (``regulated_bus_id``). The buses
-carry no DC output either: ``v_mag`` is an AC quantity and phase angles are not permutation
-equivariant.
+Column by column, the ``DC_*`` feature bundles are the ``AC_*`` ones with the reactive- and
+voltage-related columns dropped (an invariant checked by the test suite, on the class
+constants). Reactive-only devices (shunts, static VAR compensators) carry nothing in the DC
+problem and are omitted entirely, as are the voltage-regulation ports (``regulated_bus_id``).
+The buses carry no DC feature either: ``v_mag`` is an AC quantity and phase angles are not
+permutation equivariant.
 """
 
 from pypowsybl_to_energnn.elements import (
@@ -28,23 +28,25 @@ from pypowsybl_to_energnn.elements import (
 )
 
 DC_LOAD_FLOW_INPUT = {
-    "buses": Buses(),
-    "lines": Lines(features=("x", "connected1", "connected2")),
-    "two_windings_transformers": TwoWindingsTransformers(features=("x", "rho", "alpha", "connected1", "connected2")),
-    "generators": Generators(ports=("bus_id",), features=("target_p", "min_p", "max_p", "connected")),
-    "loads": Loads(features=("p0", "connected")),
-    "batteries": Batteries(features=("max_p", "min_p", "target_p", "connected")),
-    "dangling_lines": DanglingLines(features=("x", "p0")),
-    "hvdc_lines": HvdcLines(features=("converters_mode", "target_p", "max_p", "r", "connected1", "connected2")),
-    "lcc_converter_stations": LccConverterStations(features=("loss_factor", "connected")),
-    "vsc_converter_stations": VscConverterStations(ports=("id", "bus_id"), features=("loss_factor", "connected")),
+    "buses": Buses(features=None),
+    "lines": Lines(features=Lines.DC_LOAD_FLOW_INPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.DC_LOAD_FLOW_INPUT_FEATURES),
+    "generators": Generators(ports=("bus_id",), features=Generators.DC_LOAD_FLOW_INPUT_FEATURES),
+    "loads": Loads(features=Loads.DC_LOAD_FLOW_INPUT_FEATURES),
+    "batteries": Batteries(features=Batteries.DC_LOAD_FLOW_INPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.DC_LOAD_FLOW_INPUT_FEATURES),
+    "hvdc_lines": HvdcLines(features=HvdcLines.DC_LOAD_FLOW_INPUT_FEATURES),
+    "lcc_converter_stations": LccConverterStations(features=LccConverterStations.DC_LOAD_FLOW_INPUT_FEATURES),
+    "vsc_converter_stations": VscConverterStations(
+        ports=("id", "bus_id"), features=VscConverterStations.DC_LOAD_FLOW_INPUT_FEATURES
+    ),
 }
 
 DC_LOAD_FLOW_OUTPUT = {
-    "lines": Lines(features=("p1", "p2")),
-    "two_windings_transformers": TwoWindingsTransformers(features=("p1", "p2")),
-    "generators": Generators(ports=("bus_id",), features=("p",)),
-    "loads": Loads(features=("p",)),
-    "batteries": Batteries(features=("p",)),
-    "dangling_lines": DanglingLines(features=("p",)),
+    "lines": Lines(features=Lines.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "generators": Generators(ports=("bus_id",), features=Generators.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "loads": Loads(features=Loads.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "batteries": Batteries(features=Batteries.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.DC_LOAD_FLOW_OUTPUT_FEATURES),
 }

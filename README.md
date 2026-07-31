@@ -7,9 +7,11 @@ this package only provides their **PyPowSyBl** implementations:
 
 - One elements converter class per class of PyPowSyBl objects (`Lines`, `Generators`,
   `TwoWindingsTransformers`, ...), each in its own module under
-  `pypowsybl_to_energnn.elements`, carrying its default ports and features (the data of the
-  AC power flow problem) and its options to join satellite tables (tap changers,
-  operational limits, extensions) — the conversion itself is plain pandas in the class's
+  `pypowsybl_to_energnn.elements`, carrying its feature bundles as class constants
+  (`AC_LOAD_FLOW_INPUT_FEATURES`, `AC_LOAD_FLOW_OUTPUT_FEATURES`, `DC_...`), its default
+  ports and features — the AC problem data *plus* the state solved by a first AC load
+  flow, the realistic GNN input — and its options to join satellite tables (tap changers,
+  operational limits, extensions). The conversion itself is plain pandas in the class's
   `build_table` method.
 - `TableConverter`, the generic escape hatch for any other table — a PyPowSyBl getter or
   any callable returning a DataFrame.
@@ -47,18 +49,21 @@ Multi Graph. Each entry of its `elements_converter_dict` produces one class of h
 defined by a list of *ports* (columns holding addresses, e.g. bus ids) and a list of
 *features* (columns holding numerical values).
 
-Ready-to-use configurations are available in `pypowsybl_to_energnn.ready_to_use`.
+Ready-to-use configurations are available in `pypowsybl_to_energnn.ready_to_use`: the
+warm-started input (the AC problem plus the state solved by a first load flow — the
+realistic GNN input), the problem-only input, and the solved-state output, plus their DC
+counterparts.
 ```python
 import pypowsybl.loadflow as lf
 import pypowsybl.network as pn
 import pypowsybl_to_energnn as pe
 from energnn.graph import Graph
 
-input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_INPUT)
+input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_WARM_START_INPUT)
 output_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_OUTPUT)
 
 network = pn.create_ieee14()  # Or any other PyPowSyBl network
-lf.run_ac(network)  # The output columns are NaN until a power flow has run
+lf.run_ac(network)  # The solved-state columns are NaN until a power flow has run
 
 input_graph: Graph = input_converter(network=network)
 output_graph: Graph = output_converter(network=network)
@@ -70,7 +75,7 @@ Graphs are built on a numpy backend by default. To get graphs on another backend
 ```python
 from energnn.graph import JaxBackend
 
-input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_INPUT, backend=JaxBackend())
+input_converter = pe.PypowsyblConverter(pe.AC_LOAD_FLOW_WARM_START_INPUT, backend=JaxBackend())
 ```
 
 Converters can also return the structure of the graphs they output,
@@ -89,17 +94,20 @@ model = TinyRecurrentEquivariantGNN(
 ## Custom Configurations
 
 A configuration is a plain dict mapping each hyper-edge class to an elements converter.
-Each converter class defaults to the ports and features of the AC power flow problem —
-open the class (one module per class in `pypowsybl_to_energnn/elements/`) to read its
-column lists — and every column choice can be overridden at construction. To adjust a
-ready-to-use configuration at the margin, copy the dict and replace or add entries; to
-start from scratch, write your own:
+Each converter class carries its feature bundles as class constants — the power flow grid
+`AC`/`DC` × `INPUT`/`OUTPUT`, additive at will — and defaults to the warm-started AC input
+(`AC_LOAD_FLOW_INPUT_FEATURES` + `AC_LOAD_FLOW_OUTPUT_FEATURES`); open the class (one
+module per class in `pypowsybl_to_energnn/elements/`) to read the column lists. Every
+column choice can be overridden at construction. To adjust a ready-to-use configuration at
+the margin, copy the dict and replace or add entries; to start from scratch, write your
+own:
 
 ```python
 import pypowsybl_to_energnn as pe
 
-config = dict(pe.AC_LOAD_FLOW_INPUT)
+config = dict(pe.AC_LOAD_FLOW_WARM_START_INPUT)
 config["generators"] = pe.Generators(ports=("bus_id",), features=("target_p", "energy_source"))
+config["lines"] = pe.Lines(features=(*pe.Lines.DC_LOAD_FLOW_INPUT_FEATURES, *pe.Lines.DC_LOAD_FLOW_OUTPUT_FEATURES))
 del config["batteries"]
 
 converter = pe.PypowsyblConverter(config)
@@ -125,7 +133,7 @@ and are NaN (0 downstream) for elements without the satellite:
 ```python
 import pypowsybl_to_energnn as pe
 
-config = dict(pe.AC_LOAD_FLOW_INPUT)
+config = dict(pe.AC_LOAD_FLOW_WARM_START_INPUT)
 config["lines"] = pe.Lines(operational_limit_features=("current_limit1", "current_limit2"))
 config["two_windings_transformers"] = pe.TwoWindingsTransformers(
     ratio_tap_changer_features=pe.TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES,
@@ -154,7 +162,7 @@ def loads_with_squared_demand(network, **_):
     df["p0_squared"] = df["p0"] ** 2
     return df
 
-config = dict(pe.AC_LOAD_FLOW_INPUT)
+config = dict(pe.AC_LOAD_FLOW_WARM_START_INPUT)
 config["loads"] = pe.TableConverter(
     loads_with_squared_demand, ports=["bus_id"], features=["p0", "p0_squared"]
 )
@@ -173,7 +181,7 @@ import pandas as pd
 import pypowsybl.network as pn
 import pypowsybl_to_energnn as pe
 
-config = dict(pe.AC_LOAD_FLOW_INPUT)
+config = dict(pe.AC_LOAD_FLOW_WARM_START_INPUT)
 config["generator_costs"] = pe.TableConverter(
     lambda gen_costs, **_: gen_costs, ports=["generator_id"], features=["marginal_cost"]
 )

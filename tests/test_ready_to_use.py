@@ -13,6 +13,7 @@ from energnn.graph import Graph, GraphStructure
 from pypowsybl_to_energnn import PypowsyblConverter, ready_to_use
 
 CONFIGS = {
+    "ac_warm_start_input": ready_to_use.AC_LOAD_FLOW_WARM_START_INPUT,
     "ac_input": ready_to_use.AC_LOAD_FLOW_INPUT,
     "ac_output": ready_to_use.AC_LOAD_FLOW_OUTPUT,
     "dc_input": ready_to_use.DC_LOAD_FLOW_INPUT,
@@ -77,6 +78,28 @@ def test_dc_configs_are_the_active_subsets_of_the_ac_ones():
         for k, dc_converter in dc.items():
             assert set(dc_converter.port_list) <= set(ac[k].port_list), k
             assert set(dc_converter.feature_list or []) <= set(ac[k].feature_list or []), k
+
+
+def test_dc_feature_bundles_are_subsets_of_the_ac_ones():
+    # Same invariant at the source: the per-class DC constants restrict the AC ones.
+    for config in (ready_to_use.AC_LOAD_FLOW_WARM_START_INPUT,):
+        for k, converter in config.items():
+            cls = type(converter)
+            for role in ("INPUT", "OUTPUT"):
+                dc_bundle = getattr(cls, f"DC_LOAD_FLOW_{role}_FEATURES", None)
+                if dc_bundle is not None:
+                    assert set(dc_bundle) <= set(getattr(cls, f"AC_LOAD_FLOW_{role}_FEATURES")), (k, role)
+
+
+def test_warm_start_input_concatenates_problem_and_solved_state():
+    # The realistic GNN input is the AC problem warm-started by a first load flow: the
+    # defaults of every class, i.e. its AC input bundle followed by its AC output bundle.
+    assert set(ready_to_use.AC_LOAD_FLOW_WARM_START_INPUT) == set(ready_to_use.AC_LOAD_FLOW_INPUT)
+    for k, converter in ready_to_use.AC_LOAD_FLOW_WARM_START_INPUT.items():
+        cls = type(converter)
+        expected = list(cls.AC_LOAD_FLOW_INPUT_FEATURES) + list(getattr(cls, "AC_LOAD_FLOW_OUTPUT_FEATURES", ()))
+        assert converter.feature_list == expected, k
+        assert converter.port_list == ready_to_use.AC_LOAD_FLOW_INPUT[k].port_list, k
 
 
 def test_get_structure():

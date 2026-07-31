@@ -17,21 +17,27 @@ class DanglingLines(PypowsyblElements):
     """Dangling lines (``get_dangling_lines``), connected to their single bus.
 
     A dangling line models a line whose remote end lies outside the network, with a boundary
-    injection: its features combine line data (``r``/``x``/``g``/``b``) and load-like data
-    (``p0``/``q0``).
+    injection: its problem data combines line data (``r``/``x``/``g``/``b``) and load-like
+    data (``p0``/``q0``). The default features concatenate it with the state solved by a
+    first AC load flow (``p``/``q``/``i``).
 
     :param ports: Address columns, the connection bus by default.
-    :param features: Feature columns of the dangling line table, the AC problem data by
-        default.
+    :param features: Feature columns of the dangling line table,
+        ``AC_LOAD_FLOW_INPUT_FEATURES`` + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param operational_limit_features: Selected permanent current limit columns to join —
         ``("current_limit",)``, single-sided element — see
         :func:`selected_permanent_current_limits`. ``None`` (default) leaves them out.
     """
 
+    AC_LOAD_FLOW_INPUT_FEATURES = ("r", "x", "g", "b", "p0", "q0")
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("x", "p0")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)
+
     def __init__(
         self,
         ports: Sequence[str] = ("bus_id",),
-        features: Sequence[str] = ("r", "x", "g", "b", "p0", "q0"),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
         *,
         operational_limit_features: Sequence[str] | None = None,
     ):

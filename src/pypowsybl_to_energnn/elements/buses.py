@@ -16,15 +16,24 @@ class Buses(PypowsyblElements):
     """Buses of the bus view (``get_buses``), the nodes every other element attaches to.
 
     Their ``id`` is the address the ``bus_id``/``bus1_id``/... ports of the other classes
-    point to. By default they carry no feature: in the AC problem the bus state (``v_mag``)
-    is an output, requested explicitly in the output configurations. Phase angles
-    (``v_angle``) are deliberately never suggested: they are not permutation equivariant.
+    point to. The buses carry no problem data (``AC_LOAD_FLOW_INPUT_FEATURES`` is empty):
+    their default feature is the voltage magnitude solved by a first AC load flow. Phase
+    angles (``v_angle``) are deliberately never suggested: they are not permutation
+    equivariant.
 
     :param ports: Address columns, ``("id",)`` by default.
-    :param features: Feature columns, none by default.
+    :param features: Feature columns, ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default (pass
+        ``None`` for structural buses without features).
     """
 
-    def __init__(self, ports: Sequence[str] = ("id",), features: Sequence[str] | None = None):
+    AC_LOAD_FLOW_INPUT_FEATURES: tuple[str, ...] = ()
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("v_mag",)
+
+    def __init__(
+        self,
+        ports: Sequence[str] = ("id",),
+        features: Sequence[str] | None = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
+    ):
         super().__init__(ports=ports, features=features)
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:

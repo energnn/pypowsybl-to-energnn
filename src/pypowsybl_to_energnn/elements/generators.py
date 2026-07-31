@@ -17,9 +17,10 @@ class Generators(PypowsyblElements):
 
     The ``regulated_bus_id`` port points to the remotely regulated bus — an edge toward a
     possibly distant node, essential to voltage control (drop it for active-only problems).
-    The default features are the generator data of the AC problem: setpoints, active and
-    reactive limits, and the regulation status. The solved state (``p``/``q``/``i``) is
-    requested explicitly in the output configurations.
+    The feature bundles of the power flow grid (solver × role) are exposed as class
+    constants, additive at will. The default features concatenate the AC problem data
+    (setpoints, active and reactive limits, regulation status) and the state solved by a
+    first AC load flow (``p``/``q``/``i``).
 
     The ``activePowerControl`` extension (droop, participation in the frequency regulation)
     is a satellite table indexed by generator id: like every joined table, it has its own
@@ -28,30 +29,36 @@ class Generators(PypowsyblElements):
     for generators without the extension.
 
     :param ports: Address columns, the connection bus and the regulated bus by default.
-    :param features: Feature columns of the generator table, the AC problem data by default.
+    :param features: Feature columns of the generator table,
+        ``AC_LOAD_FLOW_INPUT_FEATURES`` + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param active_power_control_features: Columns of ``get_extensions("activePowerControl")``
         to join, prefixed by ``active_power_control_`` in the graph —
         ``ACTIVE_POWER_CONTROL_FEATURES`` is the full bundle. ``None`` (default) leaves the
         table out.
     """
 
+    AC_LOAD_FLOW_INPUT_FEATURES = (
+        "target_p",
+        "min_p",
+        "max_p",
+        "min_q",
+        "max_q",
+        "rated_s",
+        "target_v",
+        "target_q",
+        "voltage_regulator_on",
+        "connected",
+    )
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("target_p", "min_p", "max_p", "connected")
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)
+
     ACTIVE_POWER_CONTROL_FEATURES = ("droop", "participate", "participation_factor", "max_target_p", "min_target_p")
 
     def __init__(
         self,
         ports: Sequence[str] = ("bus_id", "regulated_bus_id"),
-        features: Sequence[str] = (
-            "target_p",
-            "min_p",
-            "max_p",
-            "min_q",
-            "max_q",
-            "rated_s",
-            "target_v",
-            "target_q",
-            "voltage_regulator_on",
-            "connected",
-        ),
+        features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
         *,
         active_power_control_features: Sequence[str] | None = None,
     ):
