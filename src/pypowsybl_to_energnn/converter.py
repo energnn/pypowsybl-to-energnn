@@ -19,7 +19,7 @@ class PypowsyblConverter(Converter):
     .. code-block:: python
 
         converters = dict(ready_to_use.AC_LOAD_FLOW_INPUT)
-        converters["generators"] = TableConverter("get_generators", ports=["bus_id"], features=["target_p"])
+        converters["generators"] = Generators(ports=("bus_id",), features=("target_p",))
         graph = PypowsyblConverter(converters)(network=network)
 
     :param elements_converter_dict: Mapping from hyper-edge class name to the

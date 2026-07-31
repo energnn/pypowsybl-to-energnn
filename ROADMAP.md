@@ -19,39 +19,42 @@ pouvait produire devait être énuméré d'avance dans le registre, et une table
 (coûts, mesures, features calculées ailleurs) ne pouvait entrer qu'en modifiant la
 librairie. Le détail vit dans l'historique de la branche `parametric-converter`.
 
-Le design retenu inverse le rapport : la mécanique doit faire ~95 % du travail de
-conversion, pas définir un ensemble prédéfini de configs possibles.
+Une première version « configs explicites » (un `TableConverter` générique + des dicts de
+listes de colonnes) a ensuite été re-travaillée (2026-07-31) : le savoir métier vivait dans
+des dicts de configuration, peu navigables pour le public visé (stagiaires/doctorants). Le
+design retenu le déplace dans **une classe par type d'objet pypowsybl**, un module par
+classe (`elements/lines.py`, `elements/generators.py`, ...), en assumant la verbosité :
 
-- **`TableConverter`** : un elements converter par classe d'hyper-arêtes, piloté par une
-  table — le nom d'un getter pypowsybl, ou n'importe quel callable rendant un DataFrame
-  (une ligne par hyper-arête), qui reçoit tels quels les kwargs de l'appel de conversion
-  (`network=...` compris). La plomberie générique est dans la classe : split
-  ports/features, validation des colonnes avec message explicite (§4), isolation des ports
-  pendants (`''` et NaN re-routés vers des adresses sentinelles déterministes,
-  `isolate_dangling_ports`).
-- **Une config = un dict** `{classe: TableConverter}`, assemblé par `PypowsyblConverter`
-  (qui impose aussi `per_unit`, §4). Override = copier le dict et remplacer ou ajouter des
-  entrées ; une table externe se raccorde au graphe par ses ids pypowsybl, les adresses
-  étant unifiées globalement à la construction.
-- **La connaissance métier vit dans les configs `ready_to_use`**, écrites en toutes
-  lettres et commentées : `AC_LOAD_FLOW_INPUT`/`AC_LOAD_FLOW_OUTPUT` (les données du
-  problème AC / l'état qu'il résout, cumulables — l'entrée typique d'un GNN porte les
-  deux ; angles exclus car non équivariants ; ports de régulation distante
-  `regulated_bus_id`) et leurs restrictions actives `DC_LOAD_FLOW_INPUT`/`OUTPUT`
-  (l'invariant dc ⊆ ac, classe par classe et colonne par colonne, est testé sur les
-  dicts). Tout le reste — satellites (régleurs, limites), vue bus/breaker
-  (`get_bus_breaker_view_buses` + switches `retained`, démontrée dans les tests),
-  extensions (`get_extensions`), sources exogènes — s'écrit en pandas dans le callable ;
-  les pièges déjà défrichés (espaces d'ids des extensions propres à une vue, switches
-  `retained`, pilotes multi-bus du réglage secondaire) restent documentés dans les tests
-  et l'historique git.
+- **Chaque classe porte ses défauts** — ports et features du problème AC, lisibles dans sa
+  signature — et implémente la conversion en pandas explicite dans sa méthode
+  `build_table`, l'unique point d'extension. La plomberie commune (split ports/features,
+  validation des colonnes avec message explicite, isolation des ports pendants
+  `isolate_dangling_ports` — `''` et NaN re-routés vers des adresses sentinelles
+  déterministes) vit dans la base `PypowsyblElements`.
+- **Chaque table jointe a son paramètre `<table>_features`**, symétrique de `features` :
+  la liste des colonnes à ramener (`None` = pas jointe), préfixées du nom de la table dans
+  le graphe (`ratio_tap_changer_tap`, `active_power_control_droop`, ... — pas de collision
+  possible, `rho` existe des deux côtés). Concernés : régleurs et limites opérationnelles
+  des branches (`selected_permanent_current_limits` : agrégation des limites permanentes
+  sélectionnées de type CURRENT, une colonne par côté), extensions `activePowerControl`
+  (Generators) et `standbyAutomaton` (StaticVarCompensators). Le réglage secondaire de
+  tension n'est pas un satellite mais une structure à part entière : deux classes dédiées
+  `SecondaryVoltageControlZones`/`Units` (pilotes multi-bus éclatés une hyper-arête par
+  (zone, pilote), ids bus/breaker traduits en vue bus, adresse de zone partagée ;
+  raccorder les units aux générateurs demande `Generators(ports=("id", ...))`).
+- **Une config = un dict** `{classe: elements converter}`, assemblé par
+  `PypowsyblConverter` (qui impose aussi `per_unit`). Override = copier le dict et
+  remplacer ou ajouter des entrées. Les configs `ready_to_use`
+  (`AC_LOAD_FLOW_INPUT`/`OUTPUT`, restrictions actives `DC_*` — invariant dc ⊆ ac testé)
+  deviennent triviales : l'entrée AC est chaque classe avec ses défauts.
+- **`TableConverter` reste l'échappatoire ouverte** : nom de getter pypowsybl ou callable
+  recevant les kwargs de l'appel de conversion (`network=...` compris) — features
+  dérivées, vue bus/breaker (démontrée dans les tests), sources exogènes raccordées au
+  graphe par leurs ids pypowsybl.
 
-La sous-classe d'`ElementsConverter` garde sa place pour ce qu'un callable n'exprime pas
-confortablement, mais c'est désormais l'exception : le callable couvre features dérivées,
-jointures et sources exogènes.
-
-**État** : implémenté (`elements.py`, `converter.py`, `ready_to_use/`). Restent la vue
-node/breaker (pas de table globale dans pypowsybl, assemblage poste par poste à
+**État** : implémenté (`elements/`, `converter.py`, `ready_to_use/`), à graphes produits
+strictement identiques à la version précédente sur les configs ready-to-use. Restent la
+vue node/breaker (pas de table globale dans pypowsybl, assemblage poste par poste à
 re-namespacer) et le filtrage sur la composante synchrone principale, en chantiers futurs.
 
 ## 2. Le chemin retour : Graph → réseau

@@ -14,44 +14,37 @@ carry no DC output either: ``v_mag`` is an AC quantity and phase angles are not 
 equivariant.
 """
 
-from pypowsybl_to_energnn.elements import TableConverter
+from pypowsybl_to_energnn.elements import (
+    Batteries,
+    Buses,
+    DanglingLines,
+    Generators,
+    HvdcLines,
+    LccConverterStations,
+    Lines,
+    Loads,
+    TwoWindingsTransformers,
+    VscConverterStations,
+)
 
 DC_LOAD_FLOW_INPUT = {
-    "buses": TableConverter("get_buses", ports=["id"]),
-    "lines": TableConverter("get_lines", ports=["bus1_id", "bus2_id"], features=["x", "connected1", "connected2"]),
-    "two_windings_transformers": TableConverter(
-        "get_2_windings_transformers",
-        ports=["bus1_id", "bus2_id"],
-        features=["x", "rho", "alpha", "connected1", "connected2"],
-    ),
-    "generators": TableConverter(
-        "get_generators",
-        ports=["bus_id"],
-        features=["target_p", "min_p", "max_p", "connected"],
-    ),
-    "loads": TableConverter("get_loads", ports=["bus_id"], features=["p0", "connected"]),
-    "batteries": TableConverter("get_batteries", ports=["bus_id"], features=["max_p", "min_p", "target_p", "connected"]),
-    "dangling_lines": TableConverter("get_dangling_lines", ports=["bus_id"], features=["x", "p0"]),
-    "hvdc_lines": TableConverter(
-        "get_hvdc_lines",
-        ports=["converter_station1_id", "converter_station2_id"],
-        features=["converters_mode", "target_p", "max_p", "r", "connected1", "connected2"],
-    ),
-    "lcc_converter_stations": TableConverter(
-        "get_lcc_converter_stations", ports=["id", "bus_id"], features=["loss_factor", "connected"]
-    ),
-    "vsc_converter_stations": TableConverter(
-        "get_vsc_converter_stations", ports=["id", "bus_id"], features=["loss_factor", "connected"]
-    ),
+    "buses": Buses(),
+    "lines": Lines(features=("x", "connected1", "connected2")),
+    "two_windings_transformers": TwoWindingsTransformers(features=("x", "rho", "alpha", "connected1", "connected2")),
+    "generators": Generators(ports=("bus_id",), features=("target_p", "min_p", "max_p", "connected")),
+    "loads": Loads(features=("p0", "connected")),
+    "batteries": Batteries(features=("max_p", "min_p", "target_p", "connected")),
+    "dangling_lines": DanglingLines(features=("x", "p0")),
+    "hvdc_lines": HvdcLines(features=("converters_mode", "target_p", "max_p", "r", "connected1", "connected2")),
+    "lcc_converter_stations": LccConverterStations(features=("loss_factor", "connected")),
+    "vsc_converter_stations": VscConverterStations(ports=("id", "bus_id"), features=("loss_factor", "connected")),
 }
 
 DC_LOAD_FLOW_OUTPUT = {
-    "lines": TableConverter("get_lines", ports=["bus1_id", "bus2_id"], features=["p1", "p2"]),
-    "two_windings_transformers": TableConverter(
-        "get_2_windings_transformers", ports=["bus1_id", "bus2_id"], features=["p1", "p2"]
-    ),
-    "generators": TableConverter("get_generators", ports=["bus_id"], features=["p"]),
-    "loads": TableConverter("get_loads", ports=["bus_id"], features=["p"]),
-    "batteries": TableConverter("get_batteries", ports=["bus_id"], features=["p"]),
-    "dangling_lines": TableConverter("get_dangling_lines", ports=["bus_id"], features=["p"]),
+    "lines": Lines(features=("p1", "p2")),
+    "two_windings_transformers": TwoWindingsTransformers(features=("p1", "p2")),
+    "generators": Generators(ports=("bus_id",), features=("p",)),
+    "loads": Loads(features=("p",)),
+    "batteries": Batteries(features=("p",)),
+    "dangling_lines": DanglingLines(features=("p",)),
 }

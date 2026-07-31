@@ -8,17 +8,17 @@
 # they are re-exported here for convenience.
 from energnn.converter import Converter, ElementsConverter
 
-from . import ready_to_use
+from . import elements, ready_to_use
 from .converter import PypowsyblConverter
-from .elements import TableConverter, isolate_dangling_ports
+from .elements import *  # noqa: F401,F403
 from .ready_to_use import *  # noqa: F401,F403
 
 __all__ = [
     "Converter",
     "ElementsConverter",
     "PypowsyblConverter",
-    "TableConverter",
-    "isolate_dangling_ports",
+    "elements",
     "ready_to_use",
+    *elements.__all__,
     *ready_to_use.__all__,
 ]

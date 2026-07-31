@@ -5,11 +5,16 @@ This helper package is part of the [EnerGNN](https://github.com/energnn/energnn)
 The `Converter` and `ElementsConverter` abstract base classes live in `energnn.converter`;
 this package only provides their **PyPowSyBl** implementations:
 
-- `TableConverter`, an elements converter that extracts one class of hyper-edges from a
-  table — a PyPowSyBl getter or any callable returning a DataFrame — and handles the
-  generic plumbing (ports/features split, column validation, dangling-port isolation).
+- One elements converter class per class of PyPowSyBl objects (`Lines`, `Generators`,
+  `TwoWindingsTransformers`, ...), each in its own module under
+  `pypowsybl_to_energnn.elements`, carrying its default ports and features (the data of the
+  AC power flow problem) and its options to join satellite tables (tap changers,
+  operational limits, extensions) — the conversion itself is plain pandas in the class's
+  `build_table` method.
+- `TableConverter`, the generic escape hatch for any other table — a PyPowSyBl getter or
+  any callable returning a DataFrame.
 - Ready-to-use configurations for common use cases — explicit, copyable dicts mapping each
-  hyper-edge class to its `TableConverter` — in `pypowsybl_to_energnn.ready_to_use`.
+  hyper-edge class to its elements converter — in `pypowsybl_to_energnn.ready_to_use`.
 ---
 
 ## Supported Formats
@@ -83,49 +88,75 @@ model = TinyRecurrentEquivariantGNN(
 
 ## Custom Configurations
 
-A configuration is a plain dict mapping each hyper-edge class to a `TableConverter` — the
-PyPowSyBl getter (or callable, see below) it reads, its port columns (addresses: bus ids,
-parent element ids, ...) and its feature columns. To adjust a ready-to-use configuration at
-the margin, copy the dict and replace or add entries; to start from scratch, write your own:
+A configuration is a plain dict mapping each hyper-edge class to an elements converter.
+Each converter class defaults to the ports and features of the AC power flow problem —
+open the class (one module per class in `pypowsybl_to_energnn/elements/`) to read its
+column lists — and every column choice can be overridden at construction. To adjust a
+ready-to-use configuration at the margin, copy the dict and replace or add entries; to
+start from scratch, write your own:
 
 ```python
 import pypowsybl_to_energnn as pe
 
 config = dict(pe.AC_LOAD_FLOW_INPUT)
-config["generators"] = pe.TableConverter("get_generators", ports=["bus_id"], features=["target_p", "energy_source"])
+config["generators"] = pe.Generators(ports=("bus_id",), features=("target_p", "energy_source"))
 del config["batteries"]
 
 converter = pe.PypowsyblConverter(config)
 ```
 
 Note that the `"id"` column (the index of PyPowSyBl tables, recovered as a regular column)
-can be used as a port like any other column. `TableConverter` validates the requested
-columns (with an explicit error listing the available ones) and isolates the dangling ports:
-an empty connection point (e.g. `bus_id` of a disconnected element) is rerouted to its own
+can be used as a port like any other column. Every class validates the requested columns
+(with an explicit error listing the available ones) and isolates the dangling ports: an
+empty connection point (e.g. `bus_id` of a disconnected element) is rerouted to its own
 sentinel address instead of spuriously connecting every such element through a shared
 phantom node.
 ---
 
-## Custom Tables
+## Joined Tables
 
-The table of a `TableConverter` can also be any callable returning a DataFrame with one row
-per hyper-edge. It receives all the arguments of the conversion call verbatim
-(`network=...` among them), so derived features, filtered rows or joined satellite tables
-are just pandas:
+Some element classes have satellite tables: the tap changers and operational limits of the
+branches, the `activePowerControl`/`standbyAutomaton` extensions, ... Each satellite table
+of a class has its own feature list parameter, symmetric with `features`: pass the columns
+to bring in (`None`, the default, leaves the table out). Joined columns land in the graph
+prefixed by their table name (`ratio_tap_changer_tap`, `active_power_control_droop`, ...),
+and are NaN (0 downstream) for elements without the satellite:
 
 ```python
 import pypowsybl_to_energnn as pe
 
-def transformers_with_ratio_tap_changers(network, **_):
-    df = network.get_2_windings_transformers(all_attributes=True)
-    rtc = network.get_ratio_tap_changers(all_attributes=True).add_prefix("rtc_")
-    return df.join(rtc).reset_index()
+config = dict(pe.AC_LOAD_FLOW_INPUT)
+config["lines"] = pe.Lines(operational_limit_features=("current_limit1", "current_limit2"))
+config["two_windings_transformers"] = pe.TwoWindingsTransformers(
+    ratio_tap_changer_features=pe.TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES,
+)
+config["generators"] = pe.Generators(active_power_control_features=("droop", "participate"))
+```
+
+The secondary voltage control extension is not a satellite of an existing element but a
+structure of its own — control zones piloting buses, units enrolling generators — and comes
+as two dedicated hyper-edge classes, `SecondaryVoltageControlZones` and
+`SecondaryVoltageControlUnits` (see their docstrings for the address wiring).
+---
+
+## Custom Tables
+
+When no dedicated class fits, `TableConverter` converts any table: a PyPowSyBl getter name,
+or any callable returning a DataFrame with one row per hyper-edge. The callable receives
+all the arguments of the conversion call verbatim (`network=...` among them), so derived
+features, filtered rows or ad-hoc joins are just pandas:
+
+```python
+import pypowsybl_to_energnn as pe
+
+def loads_with_squared_demand(network, **_):
+    df = network.get_loads(all_attributes=True).reset_index()
+    df["p0_squared"] = df["p0"] ** 2
+    return df
 
 config = dict(pe.AC_LOAD_FLOW_INPUT)
-config["two_windings_transformers"] = pe.TableConverter(
-    transformers_with_ratio_tap_changers,
-    ports=["bus1_id", "bus2_id"],
-    features=["r", "x", "rho", "alpha", "rtc_tap", "rtc_target_v"],
+config["loads"] = pe.TableConverter(
+    loads_with_squared_demand, ports=["bus_id"], features=["p0", "p0_squared"]
 )
 ```
 ---
