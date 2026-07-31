@@ -100,7 +100,9 @@ def test_phase_tap_changers_merge():
 
 
 def test_lines_operational_limits(eurostag):
-    converter = Lines(operational_limit_features=("current_limit1", "current_limit2"))
+    converter = Lines(
+        operational_limit_features=("current_limit1", "current_limit2", "has_current_limit1", "has_current_limit2")
+    )
     _, df_feature = converter(network=eurostag)
 
     line_ids = list(eurostag.get_lines().index)
@@ -108,14 +110,35 @@ def test_lines_operational_limits(eurostag):
     # Values checked against get_operational_limits: the selected permanent CURRENT limits.
     assert row["current_limit1"] == 500.0
     assert row["current_limit2"] == 1100.0
+    assert row["has_current_limit1"] == True  # noqa: E712
+    assert row["has_current_limit2"] == True  # noqa: E712
+
+
+def test_has_current_limit_tells_a_missing_limit_apart_from_a_zero_one():
+    # A zero limit and no limit both become 0 downstream: the indicator disambiguates.
+    network = pn.create_eurostag_tutorial_example1_network()
+    network.create_operational_limits(
+        element_id="NHV1_NHV2_2", side="ONE", name="permanent_limit", type="CURRENT", value=0.0, acceptable_duration=-1
+    )
+    converter = Lines(operational_limit_features=("current_limit1", "has_current_limit1"))
+    _, df_feature = converter(network=network)
+
+    line_ids = list(network.get_lines().index)
+    row = df_feature.iloc[line_ids.index("NHV1_NHV2_2")]
+    assert row["current_limit1"] == 0.0
+    assert row["has_current_limit1"] == True  # noqa: E712
 
 
 def test_transformers_operational_limits_missing_are_nan(eurostag):
     # The eurostag transformers carry no operational limit: the columns must still exist.
-    converter = TwoWindingsTransformers(operational_limit_features=("current_limit1", "current_limit2"))
+    converter = TwoWindingsTransformers(
+        operational_limit_features=("current_limit1", "current_limit2", "has_current_limit1", "has_current_limit2")
+    )
     _, df_feature = converter(network=eurostag)
     assert df_feature["current_limit1"].isna().all()
     assert df_feature["current_limit2"].isna().all()
+    # Elements absent from the limits table: the indicator is NaN there, i.e. 0 downstream.
+    assert df_feature["has_current_limit1"].isna().all()
 
 
 def test_dangling_lines_operational_limits():
@@ -129,8 +152,9 @@ def test_dangling_lines_operational_limits():
         element_id="DL", side="NONE", name="permanent_limit", type="CURRENT", value=250.0, acceptable_duration=-1
     )
 
-    _, df_feature = DanglingLines(operational_limit_features=("current_limit",))(network=network)
+    _, df_feature = DanglingLines(operational_limit_features=("current_limit", "has_current_limit"))(network=network)
     assert df_feature["current_limit"].tolist() == [250.0]
+    assert df_feature["has_current_limit"].tolist() == [True]
 
 
 def test_active_power_control_merge():
@@ -145,6 +169,25 @@ def test_active_power_control_merge():
     assert droop[generator_ids.index("B1-G")] == 4.0
     # Generators without the extension get NaN (0 downstream).
     assert droop.isna().sum() == len(generator_ids) - 1
+
+
+def test_hvdc_lines_extensions_merge():
+    network = pn.create_four_substations_node_breaker_network()
+    network.create_extensions("hvdcAngleDroopActivePowerControl", id="HVDC1", droop=0.1, p0=100.0, enabled=True)
+    network.create_extensions("hvdcOperatorActivePowerRange", id="HVDC1", opr_from_cs1_to_cs2=500.0, opr_from_cs2_to_cs1=400.0)
+
+    converter = HvdcLines(
+        hvdc_angle_droop_active_power_control_features=HvdcLines.HVDC_ANGLE_DROOP_ACTIVE_POWER_CONTROL_FEATURES,
+        hvdc_operator_active_power_range_features=("opr_from_cs1_to_cs2",),
+    )
+    _, df_feature = converter(network=network)
+
+    hvdc_ids = list(network.get_hvdc_lines().index)
+    droop = df_feature["hvdc_angle_droop_active_power_control_droop"]
+    assert droop[hvdc_ids.index("HVDC1")] == pytest.approx(0.1)
+    assert df_feature["hvdc_operator_active_power_range_opr_from_cs1_to_cs2"][hvdc_ids.index("HVDC1")] == 500.0
+    # HVDC2 carries neither extension: NaN, 0 downstream.
+    assert droop.isna()[hvdc_ids.index("HVDC2")]
 
 
 def test_standby_automaton_merge():

@@ -27,9 +27,10 @@ class Lines(PypowsyblElements):
     :param features: Feature columns of the line table, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
         ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param operational_limit_features: Selected permanent current limit columns to join,
-        among ``("current_limit1", "current_limit2")`` — NaN (0 downstream) for lines
-        without one, see :func:`selected_permanent_current_limits`. ``None`` (default)
-        leaves them out.
+        among ``("current_limit1", "current_limit2", "has_current_limit1",
+        "has_current_limit2")`` — NaN (0 downstream) for lines without one, the ``has_*``
+        indicators telling a missing limit apart from a zero one; see
+        :func:`selected_permanent_current_limits`. ``None`` (default) leaves them out.
     """
 
     AC_LOAD_FLOW_INPUT_FEATURES = ("r", "x", "g1", "b1", "g2", "b2", "connected1", "connected2")

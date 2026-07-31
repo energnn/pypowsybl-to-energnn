@@ -37,10 +37,15 @@ classe (`elements/lines.py`, `elements/generators.py`, ...), en assumant la verb
 - **Chaque table jointe a son paramètre `<table>_features`**, symétrique de `features` :
   la liste des colonnes à ramener (`None` = pas jointe), préfixées du nom de la table dans
   le graphe (`ratio_tap_changer_tap`, `active_power_control_droop`, ... — pas de collision
-  possible, `rho` existe des deux côtés). Concernés : régleurs et limites opérationnelles
-  des branches (`selected_permanent_current_limits` : agrégation des limites permanentes
-  sélectionnées de type CURRENT, une colonne par côté), extensions `activePowerControl`
-  (Generators) et `standbyAutomaton` (StaticVarCompensators). Le réglage secondaire de
+  possible, `rho` existe des deux côtés ; préfixage confirmé après revue contre une config
+  projet en noms bruts). Concernés : régleurs et limites opérationnelles des branches
+  (`selected_permanent_current_limits` : agrégation des limites permanentes sélectionnées
+  de type CURRENT, une colonne par côté, plus les indicateurs `has_current_limit*` qui
+  distinguent « pas de limite » de « limite nulle » sous le NaN→0 aval), extensions
+  `activePowerControl` (Generators), `standbyAutomaton` (StaticVarCompensators),
+  `hvdcAngleDroopActivePowerControl` et `hvdcOperatorActivePowerRange` (HvdcLines) — les
+  colonnes d'une config projet en noms bruts restent accessibles via `TableConverter`, le
+  renommage y compris (ex. `enabled` → `ac_emulation_enabled`). Le réglage secondaire de
   tension n'est pas un satellite mais une structure à part entière : deux classes dédiées
   `SecondaryVoltageControlZones`/`Units` (pilotes multi-bus éclatés une hyper-arête par
   (zone, pilote), ids bus/breaker traduits en vue bus, adresse de zone partagée ;

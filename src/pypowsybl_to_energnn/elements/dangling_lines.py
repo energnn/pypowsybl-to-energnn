@@ -25,7 +25,8 @@ class DanglingLines(PypowsyblElements):
     :param features: Feature columns of the dangling line table,
         ``AC_LOAD_FLOW_INPUT_FEATURES`` + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     :param operational_limit_features: Selected permanent current limit columns to join —
-        ``("current_limit",)``, single-sided element — see
+        among ``("current_limit", "has_current_limit")``, single-sided element, the
+        ``has_*`` indicator telling a missing limit apart from a zero one — see
         :func:`selected_permanent_current_limits`. ``None`` (default) leaves them out.
     """
 

@@ -124,17 +124,22 @@ phantom node.
 ## Joined Tables
 
 Some element classes have satellite tables: the tap changers and operational limits of the
-branches, the `activePowerControl`/`standbyAutomaton` extensions, ... Each satellite table
-of a class has its own feature list parameter, symmetric with `features`: pass the columns
-to bring in (`None`, the default, leaves the table out). Joined columns land in the graph
-prefixed by their table name (`ratio_tap_changer_tap`, `active_power_control_droop`, ...),
-and are NaN (0 downstream) for elements without the satellite:
+branches, the `activePowerControl`, `standbyAutomaton`, `hvdcAngleDroopActivePowerControl`
+and `hvdcOperatorActivePowerRange` extensions, ... Each satellite table of a class has its
+own feature list parameter, symmetric with `features`: pass the columns to bring in
+(`None`, the default, leaves the table out). Joined columns land in the graph prefixed by
+their table name (`ratio_tap_changer_tap`, `active_power_control_droop`, ...), and are NaN
+(0 downstream) for elements without the satellite. Operational limits also expose
+`has_current_limit*` indicator columns, telling a missing limit (NaN, 0 downstream) apart
+from a zero one:
 
 ```python
 import pypowsybl_to_energnn as pe
 
 config = dict(pe.AC_LOAD_FLOW_WARM_START_INPUT)
-config["lines"] = pe.Lines(operational_limit_features=("current_limit1", "current_limit2"))
+config["lines"] = pe.Lines(
+    operational_limit_features=("current_limit1", "current_limit2", "has_current_limit1", "has_current_limit2")
+)
 config["two_windings_transformers"] = pe.TwoWindingsTransformers(
     ratio_tap_changer_features=pe.TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES,
 )

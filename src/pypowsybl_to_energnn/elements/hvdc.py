@@ -27,22 +27,60 @@ class HvdcLines(PypowsyblElements):
     stations): no ``*_OUTPUT_FEATURES`` constants, and the defaults are the problem data
     alone.
 
+    Two extensions refine the line's active power behaviour, each a satellite table indexed
+    by line id with its own feature list parameter (``None`` = not joined), the joined
+    columns landing prefixed and NaN (0 downstream) for lines without the extension:
+    ``hvdcAngleDroopActivePowerControl`` (AC emulation: ``droop``, ``p0``, ``enabled``) and
+    ``hvdcOperatorActivePowerRange`` (the operator bounds per direction).
+
     :param ports: Address columns, the two converter stations by default.
     :param features: Feature columns, ``AC_LOAD_FLOW_INPUT_FEATURES`` by default.
+    :param hvdc_angle_droop_active_power_control_features: Columns of
+        ``get_extensions("hvdcAngleDroopActivePowerControl")`` to join, prefixed by
+        ``hvdc_angle_droop_active_power_control_`` in the graph —
+        ``HVDC_ANGLE_DROOP_ACTIVE_POWER_CONTROL_FEATURES`` is the full bundle. ``None``
+        (default) leaves the table out.
+    :param hvdc_operator_active_power_range_features: Columns of
+        ``get_extensions("hvdcOperatorActivePowerRange")`` to join, prefixed by
+        ``hvdc_operator_active_power_range_`` in the graph —
+        ``HVDC_OPERATOR_ACTIVE_POWER_RANGE_FEATURES`` is the full bundle. ``None``
+        (default) leaves the table out.
     """
 
     AC_LOAD_FLOW_INPUT_FEATURES = ("converters_mode", "target_p", "max_p", "nominal_v", "r", "connected1", "connected2")
     DC_LOAD_FLOW_INPUT_FEATURES = ("converters_mode", "target_p", "max_p", "r", "connected1", "connected2")
 
+    HVDC_ANGLE_DROOP_ACTIVE_POWER_CONTROL_FEATURES = ("droop", "p0", "enabled")
+    HVDC_OPERATOR_ACTIVE_POWER_RANGE_FEATURES = ("opr_from_cs1_to_cs2", "opr_from_cs2_to_cs1")
+
     def __init__(
         self,
         ports: Sequence[str] = ("converter_station1_id", "converter_station2_id"),
         features: Sequence[str] = AC_LOAD_FLOW_INPUT_FEATURES,
+        *,
+        hvdc_angle_droop_active_power_control_features: Sequence[str] | None = None,
+        hvdc_operator_active_power_range_features: Sequence[str] | None = None,
     ):
+        features = list(features)
+        if hvdc_angle_droop_active_power_control_features is not None:
+            features += [f"hvdc_angle_droop_active_power_control_{f}" for f in hvdc_angle_droop_active_power_control_features]
+        if hvdc_operator_active_power_range_features is not None:
+            features += [f"hvdc_operator_active_power_range_{f}" for f in hvdc_operator_active_power_range_features]
         super().__init__(ports=ports, features=features)
+        self.hvdc_angle_droop_active_power_control_features = hvdc_angle_droop_active_power_control_features
+        self.hvdc_operator_active_power_range_features = hvdc_operator_active_power_range_features
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
-        return network.get_hvdc_lines(all_attributes=True).reset_index()
+        df = network.get_hvdc_lines(all_attributes=True).reset_index()
+        if self.hvdc_angle_droop_active_power_control_features is not None:
+            extension = network.get_extensions("hvdcAngleDroopActivePowerControl")
+            extension = extension.add_prefix("hvdc_angle_droop_active_power_control_")
+            df = df.merge(extension, how="left", left_on="id", right_index=True)
+        if self.hvdc_operator_active_power_range_features is not None:
+            extension = network.get_extensions("hvdcOperatorActivePowerRange")
+            extension = extension.add_prefix("hvdc_operator_active_power_range_")
+            df = df.merge(extension, how="left", left_on="id", right_index=True)
+        return df
 
 
 class LccConverterStations(PypowsyblElements):

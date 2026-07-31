@@ -21,18 +21,27 @@ def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
     one column per side: ``current_limit1``/``current_limit2`` for branches, ``current_limit``
     for single-sided elements (dangling lines).
 
-    Elements without such a limit are simply absent: merge the result with ``how="left"`` and
-    the missing values become NaN (0 downstream). pypowsybl encodes "no limit" as 1.8e308 on
-    some rows; those values are kept and end up clipped by the downstream float conversion.
+    Each ``current_limit*`` column comes with a ``has_current_limit*`` companion, ``True``
+    where the element carries the limit. Downstream, NaN features become 0, which would make
+    "no limit" indistinguishable from a zero limit: the indicator columns lift that
+    ambiguity (0 on elements without the limit, through the same NaN mechanism). pypowsybl
+    encodes "no limit" as 1.8e308 on some rows; those values are kept (indicator ``True``)
+    and end up clipped by the downstream float conversion.
+
+    Elements without any such limit are simply absent from the table: merge the result with
+    ``how="left"`` and their values become NaN (0 downstream).
 
     :param network: Network to read the limits from.
-    :return: Table indexed by element id, with the ``current_limit*`` columns present in the
-        network (a requested side that no element has must be recovered with
-        :meth:`pandas.DataFrame.reindex`).
+    :return: Table indexed by element id, with the ``current_limit*`` and
+        ``has_current_limit*`` columns present in the network (a requested side that no
+        element has must be recovered with :meth:`pandas.DataFrame.reindex`).
     """
     limits = network.get_operational_limits(all_attributes=True).reset_index()
     limits = limits[limits["selected"] & (limits["type"] == "CURRENT") & (limits["acceptable_duration"] == -1)]
     limits = limits.assign(column=limits["side"].map(_COLUMN_BY_SIDE))
     # aggfunc="min": the most conservative limit, in the untypical case where several selected
     # rows survive for the same (element, side).
-    return limits.pivot_table(index="element_id", columns="column", values="value", aggfunc="min")
+    pivot = limits.pivot_table(index="element_id", columns="column", values="value", aggfunc="min")
+    for column in list(pivot.columns):
+        pivot[f"has_{column}"] = pivot[column].notna()
+    return pivot
