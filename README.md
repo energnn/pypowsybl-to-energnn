@@ -137,7 +137,9 @@ The infrastructure above the buses comes in two forms: flat — the
 `voltage_level_features`/`substation_features` join options of the bus classes, bringing
 columns like `voltage_level_nominal_v` down onto each bus — or as a chain of dedicated
 hyper-edge classes, `VoltageLevels` and `Substations`, with the buses pointing to their
-voltage level through `voltage_level_id` and each voltage level to its substation.
+voltage level through `voltage_level_id` and each voltage level to its substation. `Areas`
+(control areas, bidding zones, carrying the interchange data) are the transversal tier,
+tied to their voltage levels by the relational `AreasVoltageLevels` class.
 ---
 
 ## Joined Tables
@@ -166,13 +168,16 @@ config["two_windings_transformers"] = pe.TwoWindingsTransformers(
 config["generators"] = pe.Generators(active_power_control_features=("droop", "participate"))
 ```
 
-Two structures do not fit the satellite form and come as dedicated hyper-edge classes
+Some structures do not fit the satellite form and come as dedicated hyper-edge classes
 instead. `OperationalLimits` keeps every selected limit — temporary ones included — as its
 own hyper-edge tied to the carrying element, turning the unbounded number of limits into an
-aggregation problem for the GNN. The secondary voltage control extension — control zones
-piloting a bus, units enrolling generators — comes as `SecondaryVoltageControlZones` and
-`SecondaryVoltageControlUnits`. Both patterns require the carrying elements to expose their
-`"id"` as a port (see the class docstrings for the address wiring).
+aggregation problem for the GNN; `ReactiveCapabilityCurvePoints` does the same for the
+reactive diagrams of the machines (their flat counterparts, the `min/max_q_at_p` and
+`at_target_p` columns, sit in the AC input bundles). The secondary voltage control
+extension — control zones piloting a bus, units enrolling generators — comes as
+`SecondaryVoltageControlZones` and `SecondaryVoltageControlUnits`. All these patterns
+require the carrying elements to expose their `"id"` as a port (see the class docstrings
+for the address wiring).
 ---
 
 ## Custom Tables
