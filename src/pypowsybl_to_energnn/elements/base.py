@@ -40,11 +40,10 @@ def isolate_dangling_ports(df: pd.DataFrame, ports: list[str]) -> pd.DataFrame:
 class PypowsyblElements(ElementsConverter):
     """Base class of all the pypowsybl elements converters, one subclass per class of objects.
 
-    Each subclass (:class:`Lines`, :class:`Generators`, ...) lives in its own module, declares
-    its default ports and features (the data of the AC power flow problem), and implements
-    :meth:`build_table` in plain pandas — that method is the whole story of how one class of
-    objects becomes a table, and the place to look at (or copy and adapt) when a conversion
-    must change.
+    Each subclass (:class:`Lines`, :class:`Generators`, ...) declares its default ports and
+    features (the data of the AC power flow problem), and implements :meth:`build_table` in
+    plain pandas — that method is the whole story of how one class of objects becomes a
+    table, and the place to look at (or copy and adapt) when a conversion must change.
 
     On top of the ports/features split inherited from :class:`ElementsConverter`, this base
     class validates that every requested column exists in the built table (with an explicit

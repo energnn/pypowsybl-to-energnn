@@ -4,12 +4,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-"""One elements converter class per class of pypowsybl objects, one module per class.
+"""One elements converter class per class of pypowsybl objects, one module per family.
 
 Every class declares its default ports and features (e.g. the data of the AC power flow problem)
 and its merge options (satellite tables, extensions), and implements the conversion in plain
-pandas in its ``build_table`` method — start reading there. :class:`TableConverter` is the
-generic escape hatch for any other table (derived features, exogenous sources, ...).
+pandas in its ``build_table`` method — start reading there. Related classes share a module
+(the infrastructure tiers, the tap changers, the HVDC pieces, ...). :class:`TableConverter`
+is the generic escape hatch for any other table (derived features, exogenous sources, ...).
 """
 
 from .base import PypowsyblElements, isolate_dangling_ports

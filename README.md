@@ -6,8 +6,8 @@ The `Converter` and `ElementsConverter` abstract base classes live in `energnn.c
 this package only provides their **PyPowSyBl** implementations:
 
 - One elements converter class per class of PyPowSyBl objects (`Lines`, `Generators`,
-  `TwoWindingsTransformers`, ...), each in its own module under
-  `pypowsybl_to_energnn.elements`, carrying its feature bundles as class constants
+  `TwoWindingsTransformers`, ...) under `pypowsybl_to_energnn.elements`, carrying its
+  feature bundles as class constants
   (`AC_LOAD_FLOW_INPUT_FEATURES`, `AC_LOAD_FLOW_OUTPUT_FEATURES`, `DC_...`), its default
   ports and features — the AC problem data *plus* the state solved by a first AC load
   flow, the realistic GNN input — and its options to join satellite tables (tap changers,

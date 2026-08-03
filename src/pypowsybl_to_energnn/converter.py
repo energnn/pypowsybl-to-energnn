@@ -25,7 +25,8 @@ class PypowsyblConverter(Converter):
     :param elements_converter_dict: Mapping from hyper-edge class name to the
         :class:`ElementsConverter` producing its table.
     :param per_unit: Set ``network.per_unit`` before extraction, so that graphs cannot
-        silently mix per-united and physical values.
+        silently mix per-united and physical values. Mind the side effect: the *caller's*
+        network object switches to that mode, and its tables read per-united afterwards.
     :param backend: Optional target backend for the produced graphs.
     """
 
