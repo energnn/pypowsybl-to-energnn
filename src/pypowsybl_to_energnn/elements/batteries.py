@@ -32,13 +32,12 @@ class Batteries(PypowsyblElements):
         "max_q",
         "min_q_at_target_p",
         "max_q_at_target_p",
-        "min_q_at_p",
-        "max_q_at_p",
         "target_p",
         "target_q",
         "connected",
     )
-    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
+    # min/max_q_at_p evaluate the capability curve at the solved p: an output like p itself.
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i", "min_q_at_p", "max_q_at_p")
     DC_LOAD_FLOW_INPUT_FEATURES = ("max_p", "min_p", "target_p", "connected")
     DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)
 

@@ -172,8 +172,9 @@ Some structures do not fit the satellite form and come as dedicated hyper-edge c
 instead. `OperationalLimits` keeps every selected limit — temporary ones included — as its
 own hyper-edge tied to the carrying element, turning the unbounded number of limits into an
 aggregation problem for the GNN; `ReactiveCapabilityCurvePoints` does the same for the
-reactive diagrams of the machines (their flat counterparts, the `min/max_q_at_p` and
-`at_target_p` columns, sit in the AC input bundles). The secondary voltage control
+reactive diagrams of the machines (their flat counterparts sit in the AC bundles:
+`min/max_q_at_target_p` with the problem data, `min/max_q_at_p` — evaluated at the solved
+`p` — with the solved state). The secondary voltage control
 extension — control zones piloting a bus, units enrolling generators — comes as
 `SecondaryVoltageControlZones` and `SecondaryVoltageControlUnits`. All these patterns
 require the carrying elements to expose their `"id"` as a port (see the class docstrings
