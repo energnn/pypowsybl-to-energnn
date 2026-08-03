@@ -52,7 +52,7 @@ defined by a list of *ports* (columns holding addresses, e.g. bus ids) and a lis
 Ready-to-use configurations are available in `pypowsybl_to_energnn.ready_to_use`: the
 warm-started input (the AC problem plus the state solved by a first load flow — the
 realistic GNN input), the problem-only input, and the solved-state output, plus their DC
-counterparts.
+counterparts and their bus/breaker view mirrors (`BUS_BREAKER_AC_LOAD_FLOW_*`).
 ```python
 import pypowsybl.loadflow as lf
 import pypowsybl.network as pn
@@ -121,6 +121,25 @@ sentinel address instead of spuriously connecting every such element through a s
 phantom node.
 ---
 
+## Topology Views
+
+Two representations of the same network are available. The bus view (`Buses`, the view of
+the default configurations) is the one power flows operate on; the bus/breaker view is the
+finer one, with `BusBreakerViewBuses` as nodes and the retained `Switches` as extra edges.
+Every element table exposes its connection columns in both views
+(`bus_id`/`bus_breaker_bus_id`, including the regulated buses), so changing view is only a
+matter of ports: the `BUS_BREAKER_AC_LOAD_FLOW_*` configurations mirror the bus view ones
+entry for entry, ports swapped for their `bus_breaker_*` twins. The `bus_id` column of the
+bus/breaker view buses holds the bus view bus each of them merges into, and can bridge the
+two views within one graph.
+
+The infrastructure above the buses comes in two forms: flat — the
+`voltage_level_features`/`substation_features` join options of the bus classes, bringing
+columns like `voltage_level_nominal_v` down onto each bus — or as a chain of dedicated
+hyper-edge classes, `VoltageLevels` and `Substations`, with the buses pointing to their
+voltage level through `voltage_level_id` and each voltage level to its substation.
+---
+
 ## Joined Tables
 
 Some element classes have satellite tables: the tap changers and operational limits of the
@@ -129,9 +148,10 @@ and `hvdcOperatorActivePowerRange` extensions, ... Each satellite table of a cla
 own feature list parameter, symmetric with `features`: pass the columns to bring in
 (`None`, the default, leaves the table out). Joined columns land in the graph prefixed by
 their table name (`ratio_tap_changer_tap`, `active_power_control_droop`, ...), and are NaN
-(0 downstream) for elements without the satellite. Operational limits also expose
-`has_current_limit*` indicator columns, telling a missing limit (NaN, 0 downstream) apart
-from a zero one:
+(0 downstream) for elements without the satellite. The merged operational limits reduce to
+the selected *permanent* current limits (the number of temporary limits per element is not
+bounded, so they do not fit a fixed-width feature vector), with `has_current_limit*`
+indicator columns telling a missing limit (NaN, 0 downstream) apart from a zero one:
 
 ```python
 import pypowsybl_to_energnn as pe
@@ -146,10 +166,13 @@ config["two_windings_transformers"] = pe.TwoWindingsTransformers(
 config["generators"] = pe.Generators(active_power_control_features=("droop", "participate"))
 ```
 
-The secondary voltage control extension is not a satellite of an existing element but a
-structure of its own — control zones piloting buses, units enrolling generators — and comes
-as two dedicated hyper-edge classes, `SecondaryVoltageControlZones` and
-`SecondaryVoltageControlUnits` (see their docstrings for the address wiring).
+Two structures do not fit the satellite form and come as dedicated hyper-edge classes
+instead. `OperationalLimits` keeps every selected limit — temporary ones included — as its
+own hyper-edge tied to the carrying element, turning the unbounded number of limits into an
+aggregation problem for the GNN. The secondary voltage control extension — control zones
+piloting a bus, units enrolling generators — comes as `SecondaryVoltageControlZones` and
+`SecondaryVoltageControlUnits`. Both patterns require the carrying elements to expose their
+`"id"` as a port (see the class docstrings for the address wiring).
 ---
 
 ## Custom Tables
