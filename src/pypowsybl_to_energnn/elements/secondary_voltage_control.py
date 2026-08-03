@@ -8,7 +8,7 @@
 
 Unlike ``activePowerControl`` or ``standbyAutomaton``, which add columns to an existing
 element and are merged into it, the secondary voltage control describes objects that exist
-on their own: control *zones*, each regulating the voltage of one or more pilot buses to a
+on their own: control *zones*, each regulating the voltage of its pilot point to a
 ``target_v``, through the *units* (generators) enrolled in the zone. The extension exposes
 them as two tables (``get_extensions("secondaryVoltageControl", table_name="zones"/"units")``),
 converted here as two hyper-edge classes.
@@ -40,17 +40,18 @@ def _secondary_voltage_control_table(network: pn.Network, table_name: str, colum
 
 
 class SecondaryVoltageControlZones(PypowsyblElements):
-    """Secondary voltage control zones, connected to their pilot buses.
+    """Secondary voltage control zones, one hyper-edge per zone, connected to its pilot bus.
 
-    A zone may pilot several buses (``bus_ids`` is a comma-separated list): the table holds
-    one hyper-edge per (zone, pilot bus) pair, all sharing the zone ``name`` address —
-    ``target_v`` is repeated on each. Beware: pypowsybl reports pilot buses as *bus/breaker*
-    view ids; they are translated here into their bus view bus (the view the default
-    configurations are built in), so that the ``pilot_bus_id`` port lands on the same
-    addresses as :class:`Buses`. For a bus/breaker configuration, override
-    :meth:`build_table` and keep the raw ids instead.
+    A zone regulates a single pilot point, located by a list of candidate identifiers
+    (``bus_ids``, comma-separated): busbar section or bus/breaker view bus ids, alternatives
+    covering topology changes — not several simultaneous pilots. Mirroring the load flow's
+    resolution, the candidates are tried in order and the first one landing on a bus wins —
+    in the bus view (``pilot_bus_id``, the default port, on the same addresses as
+    :class:`Buses`) and in the bus/breaker view (``pilot_bus_breaker_bus_id``, for
+    bus/breaker configurations) alike. A zone with no resolvable candidate is left with a
+    dangling pilot port.
 
-    :param ports: Address columns, the zone name and the pilot bus by default.
+    :param ports: Address columns, the zone name and the bus view pilot bus by default.
     :param features: Feature columns, the pilot voltage target by default.
     """
 
@@ -59,12 +60,25 @@ class SecondaryVoltageControlZones(PypowsyblElements):
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         zones = _secondary_voltage_control_table(network, "zones", columns=["name", "target_v", "bus_ids"])
-        # One row per (zone, pilot bus); the fresh index keeps the dangling-port sentinels
-        # distinct across pilots of the same zone.
-        zones = zones.assign(pilot_bus_id=zones["bus_ids"].str.split(",")).explode("pilot_bus_id").reset_index(drop=True)
-        bus_view_bus = network.get_bus_breaker_view_buses()["bus_id"]
-        zones["pilot_bus_id"] = zones["pilot_bus_id"].map(bus_view_bus)
-        return zones
+        candidates = zones.assign(candidate_id=zones["bus_ids"].str.split(",")).explode("candidate_id")
+        candidates = candidates.reset_index(drop=True)
+
+        # Resolve each candidate — a busbar section id or a bus/breaker view bus id — in both views.
+        busbar_sections = network.get_busbar_sections(all_attributes=True)
+        bus_breaker_buses = network.get_bus_breaker_view_buses()
+        is_busbar_section = candidates["candidate_id"].isin(busbar_sections.index)
+        bus_breaker_bus = candidates["candidate_id"].map(busbar_sections["bus_breaker_bus_id"])
+        bus_breaker_bus = bus_breaker_bus.where(
+            is_busbar_section, candidates["candidate_id"].where(candidates["candidate_id"].isin(bus_breaker_buses.index))
+        )
+        bus_view_bus = candidates["candidate_id"].map(busbar_sections["bus_id"])
+        bus_view_bus = bus_view_bus.where(is_busbar_section, candidates["candidate_id"].map(bus_breaker_buses["bus_id"]))
+
+        candidates["pilot_bus_id"] = bus_view_bus.replace("", float("nan"))
+        candidates["pilot_bus_breaker_bus_id"] = bus_breaker_bus.replace("", float("nan"))
+        # One row per zone: per view, the first candidate that resolves wins (groupby.first
+        # skips NaN); a zone with no resolvable candidate keeps NaN, isolated downstream.
+        return candidates.groupby("name", sort=False, as_index=False).first()
 
 
 class SecondaryVoltageControlUnits(PypowsyblElements):

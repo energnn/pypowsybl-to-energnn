@@ -222,11 +222,51 @@ def eurostag_with_secondary_voltage_control():
 def test_secondary_voltage_control_zones(eurostag_with_secondary_voltage_control):
     df_port, df_feature = SecondaryVoltageControlZones()(network=eurostag_with_secondary_voltage_control)
 
-    # One hyper-edge per (zone, pilot bus), sharing the zone address and repeating target_v;
-    # the pilot bus/breaker ids (NLOAD, NHV2) are translated into their bus view bus.
-    assert df_port["name"].tolist() == ["z1", "z1"]
-    assert df_port["pilot_bus_id"].tolist() == ["VLLOAD_0", "VLHV2_0"]
-    assert df_feature["target_v"].tolist() == [400.0, 400.0]
+    # One hyper-edge per zone: the first resolvable candidate of "NLOAD,NHV2" wins,
+    # translated into its bus view bus.
+    assert df_port["name"].tolist() == ["z1"]
+    assert df_port["pilot_bus_id"].tolist() == ["VLLOAD_0"]
+    assert df_feature["target_v"].tolist() == [400.0]
+
+
+def test_secondary_voltage_control_pilot_bus_resolution():
+    # findPilotBus semantics: candidates tried in order, unresolvable ids skipped, a zone
+    # with no resolvable candidate left dangling — in both views.
+    network = pn.create_eurostag_tutorial_example1_network()
+    zones = pd.DataFrame.from_records(
+        index="name",
+        data=[
+            {"name": "z1", "target_v": 380.0, "bus_ids": "UNKNOWN,NHV2"},
+            {"name": "z2", "target_v": 225.0, "bus_ids": "UNKNOWN"},
+        ],
+    )
+    units = pd.DataFrame.from_records(
+        index="unit_id",
+        data=[
+            {"unit_id": "GEN", "participate": True, "zone_name": "z1"},
+            {"unit_id": "GEN2", "participate": True, "zone_name": "z2"},
+        ],
+    )
+    network.create_extensions("secondaryVoltageControl", [zones, units])
+
+    converter = SecondaryVoltageControlZones(ports=("name", "pilot_bus_id", "pilot_bus_breaker_bus_id"))
+    df_port, _ = converter(network=network)
+    assert df_port["pilot_bus_id"].tolist() == ["VLHV2_0", "__dangling__1__pilot_bus_id"]
+    assert df_port["pilot_bus_breaker_bus_id"].tolist() == ["NHV2", "__dangling__1__pilot_bus_breaker_bus_id"]
+
+
+def test_secondary_voltage_control_busbar_section_pilot():
+    # In a node/breaker network the pilot point is located by a busbar section id, resolved
+    # into the section's bus in each view.
+    network = pn.create_four_substations_node_breaker_network()
+    zones = pd.DataFrame.from_records(index="name", data=[{"name": "za", "target_v": 400.0, "bus_ids": "S1VL2_BBS1"}])
+    units = pd.DataFrame.from_records(index="unit_id", data=[{"unit_id": "GH1", "participate": True, "zone_name": "za"}])
+    network.create_extensions("secondaryVoltageControl", [zones, units])
+
+    converter = SecondaryVoltageControlZones(ports=("name", "pilot_bus_id", "pilot_bus_breaker_bus_id"))
+    df_port, _ = converter(network=network)
+    assert df_port["pilot_bus_id"].tolist() == ["S1VL2_0"]
+    assert df_port["pilot_bus_breaker_bus_id"].tolist() == ["S1VL2_0"]
 
 
 def test_secondary_voltage_control_units(eurostag_with_secondary_voltage_control):

@@ -6,7 +6,7 @@
 
 """One elements converter class per class of pypowsybl objects, one module per class.
 
-Every class declares its default ports and features (the data of the AC power flow problem)
+Every class declares its default ports and features (e.g. the data of the AC power flow problem)
 and its merge options (satellite tables, extensions), and implements the conversion in plain
 pandas in its ``build_table`` method — start reading there. :class:`TableConverter` is the
 generic escape hatch for any other table (derived features, exogenous sources, ...).

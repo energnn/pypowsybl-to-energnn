@@ -51,6 +51,13 @@ class PypowsyblElements(ElementsConverter):
     error message instead of a downstream pandas ``KeyError``) and isolates the dangling ports
     (see :func:`isolate_dangling_ports`).
 
+    Every subclass keeps the object's own id in the built table as a regular ``id`` column
+    (the pypowsybl index, recovered by ``reset_index``). Adding ``"id"`` to ``ports`` thus
+    works for any class, not just :class:`Buses`: it publishes the object's id as an address,
+    letting other classes connect to the element itself — e.g.
+    ``Generators(ports=("id", "bus_id", "regulated_bus_id"))`` gives
+    :class:`SecondaryVoltageControlUnits` a generator address to tie its ``unit_id`` port to.
+
     :param ports: Names of the columns of the built table holding addresses (bus ids, parent
         element ids, ...), or ``None``.
     :param features: Names of the columns holding features, or ``None``.
