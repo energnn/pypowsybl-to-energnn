@@ -176,7 +176,9 @@ reactive diagrams of the machines (their flat counterparts sit in the AC bundles
 `min/max_q_at_target_p` with the problem data, `min/max_q_at_p` — evaluated at the solved
 `p` — with the solved state). The tap changers exist in both forms too:
 `RatioTapChangers`/`PhaseTapChangers` are the connect duals of the merge options above,
-carrying the remote-regulation edge toward the regulated bus. The secondary voltage control
+carrying the remote-regulation edge toward the regulated bus, and
+`RatioTapChangerSteps`/`PhaseTapChangerSteps` carry their full step tables, one hyper-edge
+per (device, position). The secondary voltage control
 extension — control zones piloting a bus, units enrolling generators — comes as
 `SecondaryVoltageControlZones` and `SecondaryVoltageControlUnits`. All these patterns
 require the carrying elements to expose their `"id"` as a port (see the class docstrings

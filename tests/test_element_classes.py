@@ -23,8 +23,10 @@ from pypowsybl_to_energnn import (
     Loads,
     OperationalLimits,
     PhaseTapChangers,
+    PhaseTapChangerSteps,
     PypowsyblConverter,
     RatioTapChangers,
+    RatioTapChangerSteps,
     ReactiveCapabilityCurvePoints,
     SecondaryVoltageControlUnits,
     SecondaryVoltageControlZones,
@@ -50,7 +52,9 @@ CLASSES_AND_GETTERS = [
     (Lines, "get_lines"),
     (Loads, "get_loads"),
     (PhaseTapChangers, "get_phase_tap_changers"),
+    (PhaseTapChangerSteps, "get_phase_tap_changer_steps"),
     (RatioTapChangers, "get_ratio_tap_changers"),
+    (RatioTapChangerSteps, "get_ratio_tap_changer_steps"),
     (ReactiveCapabilityCurvePoints, "get_reactive_capability_curve_points"),
     (ShuntCompensators, "get_shunt_compensators"),
     (StaticVarCompensators, "get_static_var_compensators"),
@@ -130,6 +134,21 @@ def test_tap_changers_as_their_own_classes(eurostag):
     assert df_port["id"].tolist() == ["TWT"]
     assert df_port["regulating_bus_id"].tolist() == ["S1VL1_0"]
     assert df_feature["tap"].tolist() == [15.0]
+
+
+def test_tap_changer_steps(eurostag):
+    # One hyper-edge per (device, position): the discrete range of the changer, unbounded
+    # per device, carried by the graph structure.
+    df_port, df_feature = RatioTapChangerSteps()(network=eurostag)
+    assert df_port["id"].tolist() == ["NHV2_NLOAD"] * 3
+    assert df_feature["position"].tolist() == [0.0, 1.0, 2.0]
+    assert df_feature["rho"].tolist() == pytest.approx([0.850567, 1.000667, 1.150767])
+
+    network = pn.create_four_substations_node_breaker_network()
+    df_port, df_feature = PhaseTapChangerSteps()(network=network)
+    assert len(df_port) == len(network.get_phase_tap_changer_steps()) == 33
+    assert set(df_port["id"]) == {"TWT"}
+    assert df_feature["alpha"].iloc[0] == pytest.approx(-42.8)
 
 
 def test_buses_merge_the_infrastructure_tables(eurostag):
