@@ -18,6 +18,9 @@ CONFIGS = {
     "ac_output": ready_to_use.AC_LOAD_FLOW_OUTPUT,
     "dc_input": ready_to_use.DC_LOAD_FLOW_INPUT,
     "dc_output": ready_to_use.DC_LOAD_FLOW_OUTPUT,
+    "bus_breaker_ac_warm_start_input": ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_WARM_START_INPUT,
+    "bus_breaker_ac_input": ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_INPUT,
+    "bus_breaker_ac_output": ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_OUTPUT,
 }
 
 
@@ -100,6 +103,41 @@ def test_warm_start_input_concatenates_problem_and_solved_state():
         expected = list(cls.AC_LOAD_FLOW_INPUT_FEATURES) + list(getattr(cls, "AC_LOAD_FLOW_OUTPUT_FEATURES", ()))
         assert converter.feature_list == expected, k
         assert converter.port_list == ready_to_use.AC_LOAD_FLOW_INPUT[k].port_list, k
+
+
+def _bus_breaker_twin(port):
+    return port.replace("bus", "bus_breaker_bus", 1)
+
+
+def test_bus_breaker_configs_mirror_the_bus_view_ones():
+    # Same assemblies in the finer view: every bus view class is there with its ports
+    # remapped to their bus_breaker twins and identical features; the retained switches are
+    # the only addition (input-only, hence absent from the output config).
+    for bus_breaker, bus_view, extra in (
+        (ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_WARM_START_INPUT, ready_to_use.AC_LOAD_FLOW_WARM_START_INPUT, {"switches"}),
+        (ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_INPUT, ready_to_use.AC_LOAD_FLOW_INPUT, {"switches"}),
+        (ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_OUTPUT, ready_to_use.AC_LOAD_FLOW_OUTPUT, set()),
+    ):
+        assert set(bus_breaker) == set(bus_view) | extra
+        for k, bus_view_converter in bus_view.items():
+            assert bus_breaker[k].port_list == [_bus_breaker_twin(p) for p in bus_view_converter.port_list], k
+            assert bus_breaker[k].feature_list == bus_view_converter.feature_list, k
+
+
+def test_bus_breaker_configs_convert_a_node_breaker_network():
+    # On a node/breaker network the switches class carries the retained switches, tied to
+    # the bus/breaker view buses on both sides.
+    network = pn.create_four_substations_node_breaker_network()
+    lf.run_ac(network)
+    config = ready_to_use.BUS_BREAKER_AC_LOAD_FLOW_WARM_START_INPUT
+    graph = PypowsyblConverter(config)(network=network)
+    _check_graph(config, graph)
+
+    switches = graph.hyper_edge_sets["switches"]
+    assert np.asarray(switches.feature_array).shape[0] > 0
+    bus_addresses = set(np.asarray(graph.hyper_edge_sets["buses"].port_dict["id"]).tolist())
+    for port in ("bus_breaker_bus1_id", "bus_breaker_bus2_id"):
+        assert set(np.asarray(switches.port_dict[port]).tolist()) <= bus_addresses
 
 
 def test_get_structure():

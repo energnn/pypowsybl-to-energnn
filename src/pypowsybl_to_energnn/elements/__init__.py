@@ -14,7 +14,7 @@ generic escape hatch for any other table (derived features, exogenous sources, .
 
 from .base import PypowsyblElements, isolate_dangling_ports
 from .batteries import Batteries
-from .buses import Buses
+from .buses import BusBreakerViewBuses, Buses
 from .dangling_lines import DanglingLines
 from .generators import Generators
 from .hvdc import HvdcLines, LccConverterStations, VscConverterStations
@@ -24,11 +24,13 @@ from .operational_limits import selected_permanent_current_limits
 from .secondary_voltage_control import SecondaryVoltageControlUnits, SecondaryVoltageControlZones
 from .shunt_compensators import ShuntCompensators
 from .static_var_compensators import StaticVarCompensators
+from .switches import Switches
 from .table import TableConverter
 from .two_windings_transformers import TwoWindingsTransformers
 
 __all__ = [
     "Batteries",
+    "BusBreakerViewBuses",
     "Buses",
     "DanglingLines",
     "Generators",
@@ -41,6 +43,7 @@ __all__ = [
     "SecondaryVoltageControlZones",
     "ShuntCompensators",
     "StaticVarCompensators",
+    "Switches",
     "TableConverter",
     "TwoWindingsTransformers",
     "VscConverterStations",

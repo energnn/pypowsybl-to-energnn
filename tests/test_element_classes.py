@@ -11,6 +11,7 @@ import pytest
 
 from pypowsybl_to_energnn import (
     Batteries,
+    BusBreakerViewBuses,
     Buses,
     DanglingLines,
     Generators,
@@ -23,12 +24,14 @@ from pypowsybl_to_energnn import (
     SecondaryVoltageControlZones,
     ShuntCompensators,
     StaticVarCompensators,
+    Switches,
     TwoWindingsTransformers,
     VscConverterStations,
 )
 
 CLASSES_AND_GETTERS = [
     (Batteries, "get_batteries"),
+    (BusBreakerViewBuses, "get_bus_breaker_view_buses"),
     (Buses, "get_buses"),
     (DanglingLines, "get_dangling_lines"),
     (Generators, "get_generators"),
@@ -97,6 +100,47 @@ def test_phase_tap_changers_merge():
     transformer_ids = list(network.get_2_windings_transformers().index)
     expected_tap = network.get_phase_tap_changers().loc["TWT", "tap"]
     assert df_feature["phase_tap_changer_tap"][transformer_ids.index("TWT")] == expected_tap
+
+
+def test_buses_merge_the_infrastructure_tables(eurostag):
+    # voltage_levels and substations chain through voltage_level_id; joined columns land
+    # prefixed, and the substation join also lands the plain substation_id, usable as a port.
+    converter = Buses(
+        ports=("id", "substation_id"),
+        voltage_level_features=Buses.VOLTAGE_LEVEL_FEATURES,
+        substation_features=("fictitious",),
+    )
+    df_port, df_feature = converter(network=eurostag)
+
+    prefixed = [f"voltage_level_{f}" for f in Buses.VOLTAGE_LEVEL_FEATURES] + ["substation_fictitious"]
+    assert converter.feature_list == ["v_mag"] + prefixed
+    assert set(df_port["substation_id"]) <= set(eurostag.get_substations().index)
+    nominal_v = dict(zip(df_port["id"], df_feature["voltage_level_nominal_v"]))
+    assert nominal_v == {"VLGEN_0": 24.0, "VLHV1_0": 380.0, "VLHV2_0": 380.0, "VLLOAD_0": 150.0}
+
+
+def test_bus_breaker_view_buses(eurostag):
+    # The finer topology nodes; their bus_id column bridges toward the bus view, and the
+    # infrastructure joins are shared with Buses.
+    converter = BusBreakerViewBuses(ports=("id", "bus_id"), voltage_level_features=("nominal_v",))
+    df_port, df_feature = converter(network=eurostag)
+
+    assert set(df_port["id"]) == set(eurostag.get_bus_breaker_view_buses().index)
+    assert set(df_port["bus_id"]) <= set(eurostag.get_buses().index)
+    assert converter.feature_list == ["v_mag", "voltage_level_nominal_v"]
+
+
+def test_switches_keep_the_retained_ones():
+    # Only the retained switches belong to the bus/breaker view: the others are internal to
+    # a bus/breaker bus (empty bus columns) and are dropped.
+    network = pn.create_four_substations_node_breaker_network()
+    df_port, df_feature = Switches()(network=network)
+
+    switches = network.get_switches(all_attributes=True)
+    assert len(df_port) == switches["retained"].sum() > 0
+    bus_breaker_buses = set(network.get_bus_breaker_view_buses().index)
+    assert set(df_port["bus_breaker_bus1_id"]) <= bus_breaker_buses
+    assert set(df_port["bus_breaker_bus2_id"]) <= bus_breaker_buses
 
 
 def test_lines_operational_limits(eurostag):
