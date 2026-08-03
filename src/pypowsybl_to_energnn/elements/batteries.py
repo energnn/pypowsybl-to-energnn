@@ -25,7 +25,19 @@ class Batteries(PypowsyblElements):
         + ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
     """
 
-    AC_LOAD_FLOW_INPUT_FEATURES = ("max_p", "min_p", "min_q", "max_q", "target_p", "target_q", "connected")
+    AC_LOAD_FLOW_INPUT_FEATURES = (
+        "max_p",
+        "min_p",
+        "min_q",
+        "max_q",
+        "min_q_at_target_p",
+        "max_q_at_target_p",
+        "min_q_at_p",
+        "max_q_at_p",
+        "target_p",
+        "target_q",
+        "connected",
+    )
     AC_LOAD_FLOW_OUTPUT_FEATURES = ("p", "q", "i")
     DC_LOAD_FLOW_INPUT_FEATURES = ("max_p", "min_p", "target_p", "connected")
     DC_LOAD_FLOW_OUTPUT_FEATURES = ("p",)

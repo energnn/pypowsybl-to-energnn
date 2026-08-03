@@ -21,6 +21,11 @@ The alternative flat form merges the same columns down onto the buses
 (``voltage_level_features``/``substation_features`` on the bus classes) without adding
 nodes to the graph. Chain when the grouping structure itself matters (elements of a
 voltage level are second-order neighbours through it), flatten when only the data does.
+
+Areas are the transversal tier: control areas, bidding zones, ... grouping voltage levels
+freely (a voltage level can belong to several areas), hence a relational
+:class:`AreasVoltageLevels` class tying :class:`Areas` to :class:`VoltageLevels` instead of
+a parent column.
 """
 
 from typing import Sequence
@@ -53,6 +58,54 @@ class VoltageLevels(PypowsyblElements):
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         return network.get_voltage_levels(all_attributes=True).reset_index()
+
+
+class Areas(PypowsyblElements):
+    """Areas (``get_areas``): control areas, bidding zones, ... grouping voltage levels.
+
+    An area is tied to its voltage levels by the relational :class:`AreasVoltageLevels`
+    class — both carry the area ``id`` as a port. The default features are the interchange
+    data: ``interchange_target`` as problem data, the solved ``interchange`` (and its
+    ``ac_interchange``/``dc_interchange`` split) as state. ``area_type`` is categorical:
+    encode it through :class:`TableConverter` if needed.
+
+    :param ports: Address columns, ``("id",)`` by default.
+    :param features: Feature columns, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
+        ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default.
+    """
+
+    AC_LOAD_FLOW_INPUT_FEATURES = ("interchange_target",)
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("interchange", "ac_interchange", "dc_interchange")
+    DC_LOAD_FLOW_INPUT_FEATURES = ("interchange_target",)
+    DC_LOAD_FLOW_OUTPUT_FEATURES = ("interchange",)
+
+    def __init__(
+        self,
+        ports: Sequence[str] = ("id",),
+        features: Sequence[str] | None = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
+    ):
+        super().__init__(ports=ports, features=features)
+
+    def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_areas(all_attributes=True).reset_index()
+
+
+class AreasVoltageLevels(PypowsyblElements):
+    """The area membership (``get_areas_voltage_levels``), one hyper-edge per enrolment.
+
+    The relational table tying :class:`Areas` to :class:`VoltageLevels`: one hyper-edge per
+    (area, voltage level) pair — a voltage level enrolled in several areas (a control area
+    and a bidding zone, say) gets one hyper-edge each. Structural: no features by default.
+
+    :param ports: Address columns, the area and the voltage level by default.
+    :param features: Feature columns, ``None`` by default.
+    """
+
+    def __init__(self, ports: Sequence[str] = ("id", "voltage_level_id"), features: Sequence[str] | None = None):
+        super().__init__(ports=ports, features=features)
+
+    def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
+        return network.get_areas_voltage_levels(all_attributes=True).reset_index()
 
 
 class Substations(PypowsyblElements):

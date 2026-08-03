@@ -18,10 +18,11 @@ from .buses import BusBreakerViewBuses, Buses
 from .dangling_lines import DanglingLines
 from .generators import Generators
 from .hvdc import HvdcLines, LccConverterStations, VscConverterStations
-from .infrastructure import Substations, VoltageLevels
+from .infrastructure import Areas, AreasVoltageLevels, Substations, VoltageLevels
 from .lines import Lines
 from .loads import Loads
 from .operational_limits import OperationalLimits, selected_permanent_current_limits
+from .reactive_capability_curves import ReactiveCapabilityCurvePoints
 from .secondary_voltage_control import SecondaryVoltageControlUnits, SecondaryVoltageControlZones
 from .shunt_compensators import ShuntCompensators
 from .static_var_compensators import StaticVarCompensators
@@ -30,6 +31,8 @@ from .table import TableConverter
 from .two_windings_transformers import TwoWindingsTransformers
 
 __all__ = [
+    "Areas",
+    "AreasVoltageLevels",
     "Batteries",
     "BusBreakerViewBuses",
     "Buses",
@@ -41,6 +44,7 @@ __all__ = [
     "Loads",
     "OperationalLimits",
     "PypowsyblElements",
+    "ReactiveCapabilityCurvePoints",
     "SecondaryVoltageControlUnits",
     "SecondaryVoltageControlZones",
     "ShuntCompensators",

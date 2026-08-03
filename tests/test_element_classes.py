@@ -10,6 +10,8 @@ import pypowsybl.network as pn
 import pytest
 
 from pypowsybl_to_energnn import (
+    Areas,
+    AreasVoltageLevels,
     Batteries,
     BusBreakerViewBuses,
     Buses,
@@ -21,6 +23,7 @@ from pypowsybl_to_energnn import (
     Loads,
     OperationalLimits,
     PypowsyblConverter,
+    ReactiveCapabilityCurvePoints,
     SecondaryVoltageControlUnits,
     SecondaryVoltageControlZones,
     ShuntCompensators,
@@ -33,6 +36,8 @@ from pypowsybl_to_energnn import (
 )
 
 CLASSES_AND_GETTERS = [
+    (Areas, "get_areas"),
+    (AreasVoltageLevels, "get_areas_voltage_levels"),
     (Batteries, "get_batteries"),
     (BusBreakerViewBuses, "get_bus_breaker_view_buses"),
     (Buses, "get_buses"),
@@ -42,6 +47,7 @@ CLASSES_AND_GETTERS = [
     (LccConverterStations, "get_lcc_converter_stations"),
     (Lines, "get_lines"),
     (Loads, "get_loads"),
+    (ReactiveCapabilityCurvePoints, "get_reactive_capability_curve_points"),
     (ShuntCompensators, "get_shunt_compensators"),
     (StaticVarCompensators, "get_static_var_compensators"),
     (Substations, "get_substations"),
@@ -142,6 +148,43 @@ def test_infrastructure_chain():
     assert set(np.asarray(bus_ports["voltage_level_id"]).tolist()) <= voltage_level_addresses
     substation_addresses = set(np.asarray(graph.hyper_edge_sets["substations"].port_dict["id"]).tolist())
     assert set(np.asarray(voltage_level_ports["substation_id"]).tolist()) <= substation_addresses
+
+
+def test_areas_tie_to_their_voltage_levels():
+    # The transversal tier: a voltage level can be enrolled in several areas, one relational
+    # hyper-edge per (area, voltage level) pair.
+    network = pn.create_eurostag_tutorial_example1_network()
+    network.create_areas(id="control", area_type="ControlArea", interchange_target=100.0)
+    network.create_areas(id="bidding", area_type="BiddingZone", interchange_target=50.0)
+    network.create_areas_voltage_levels(id=["control", "control", "bidding"], voltage_level_id=["VLHV1", "VLHV2", "VLHV1"])
+
+    df_port, df_feature = Areas()(network=network)
+    assert df_port["id"].tolist() == ["control", "bidding"]
+    assert df_feature["interchange_target"].tolist() == [100.0, 50.0]
+
+    df_port, df_feature = AreasVoltageLevels()(network=network)
+    assert df_feature is None
+    memberships = set(zip(df_port["id"], df_port["voltage_level_id"]))
+    assert memberships == {("control", "VLHV1"), ("control", "VLHV2"), ("bidding", "VLHV1")}
+    assert set(df_port["voltage_level_id"]) <= set(network.get_voltage_levels().index)
+
+
+def test_reactive_capability_curve_points():
+    # One hyper-edge per curve point: the number of points per machine is not bounded, so
+    # the curve is carried by the graph structure. Machines with min/max limits are absent.
+    network = pn.create_four_substations_node_breaker_network()
+    df_port, df_feature = ReactiveCapabilityCurvePoints()(network=network)
+
+    raw = network.get_reactive_capability_curve_points()
+    assert len(df_port) == len(raw) > 0
+    machines = (
+        set(network.get_generators().index)
+        | set(network.get_batteries().index)
+        | set(network.get_vsc_converter_stations().index)
+    )
+    assert set(df_port["id"]) <= machines
+    # The first point of GH1, checked against the raw table.
+    assert df_feature.iloc[0][["p", "min_q", "max_q"]].tolist() == [0.0, -769.3, 860.0]
 
 
 def test_bus_breaker_view_buses(eurostag):
