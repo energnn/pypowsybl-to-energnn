@@ -66,8 +66,9 @@ class Areas(PypowsyblElements):
     An area is tied to its voltage levels by the relational :class:`AreasVoltageLevels`
     class — both carry the area ``id`` as a port. The default features are the interchange
     data: ``interchange_target`` as problem data, the solved ``interchange`` (and its
-    ``ac_interchange``/``dc_interchange`` split) as state. ``area_type`` is categorical:
-    encode it through :class:`TableConverter` if needed.
+    ``ac_interchange``/``dc_interchange`` split) as state. ``area_type`` is categorical
+    (hashed to an arbitrary float if listed as a feature; go through :class:`TableConverter`
+    for a proper encoding).
 
     :param ports: Address columns, ``("id",)`` by default.
     :param features: Feature columns, ``AC_LOAD_FLOW_INPUT_FEATURES`` +
@@ -113,8 +114,9 @@ class Substations(PypowsyblElements):
 
     Their ``id`` is the address the ``substation_id`` port of :class:`VoltageLevels` points
     to. Substations only carry categorical columns (``TSO``, ``country``, ``geo_tags``), so
-    the class is structural by default (no features): encode those columns through
-    :class:`TableConverter` if needed.
+    the class is structural by default (no features). A categorical column listed as a
+    feature is hashed to an arbitrary (deterministic) float by the converter; go through
+    :class:`TableConverter` for a proper encoding when the category structure matters.
 
     :param ports: Address columns, ``("id",)`` by default.
     :param features: Feature columns, ``None`` by default.

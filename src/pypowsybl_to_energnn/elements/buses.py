@@ -66,8 +66,9 @@ class Buses(PypowsyblElements):
     feature list parameter naming the columns to bring in (``None`` = not joined). Joined
     columns land prefixed (``voltage_level_nominal_v``, ...); the substation join also lands
     the plain ``substation_id`` column, usable as a port. Mind that substations mostly carry
-    categorical columns (``TSO``, ``country``): encode them through :class:`TableConverter`
-    instead of listing them as raw features. This is the flat form of the infrastructure;
+    categorical columns (``TSO``, ``country``): listed as features, they are hashed to an
+    arbitrary (deterministic) float by the converter — go through :class:`TableConverter`
+    for a proper encoding when the category structure matters. This is the flat form of the infrastructure;
     :class:`VoltageLevels` and :class:`Substations` are the chain form, with each tier as
     its own hyper-edge class.
 

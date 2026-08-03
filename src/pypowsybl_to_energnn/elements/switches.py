@@ -20,8 +20,9 @@ class Switches(PypowsyblElements):
     switches of bus/breaker-modelled voltage levels are always reported as retained. This
     class only makes sense in a bus/breaker configuration; in the bus view, switches are
     already collapsed inside the buses. The categorical ``kind`` column (breaker,
-    disconnector, ...) is left out of the default features: encode it through
-    :class:`TableConverter` if needed.
+    disconnector, ...) is left out of the default features (listed anyway, it is hashed to
+    an arbitrary deterministic float; go through :class:`TableConverter` for a proper
+    encoding).
 
     :param ports: Address columns, the two bus/breaker view buses by default.
     :param features: Feature columns, the open status by default.
