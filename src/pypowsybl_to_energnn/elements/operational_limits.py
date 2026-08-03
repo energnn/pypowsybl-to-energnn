@@ -4,8 +4,12 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Sequence
+
 import pandas as pd
 import pypowsybl.network as pn
+
+from .base import PypowsyblElements
 
 # ``side`` values of get_operational_limits, mapped to the column each limit lands in.
 _COLUMN_BY_SIDE = {"ONE": "current_limit1", "TWO": "current_limit2", "NONE": "current_limit", "": "current_limit"}
@@ -45,3 +49,50 @@ def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
     for column in list(pivot.columns):
         pivot[f"has_{column}"] = pivot[column].notna()
     return pivot
+
+
+class OperationalLimits(PypowsyblElements):
+    """Operational limits (``get_operational_limits``), one hyper-edge per limit.
+
+    The limits table has no fixed cardinality: an element carries its permanent limit plus
+    any number of temporary limits, with arbitrary acceptable durations that differ across
+    elements and datasets — which rules out a fixed-width feature encoding (that is why
+    :func:`selected_permanent_current_limits` reduces to the permanent limit). This class
+    keeps every *selected* limit instead, each as its own hyper-edge tied to the carrying
+    element: the variable cardinality becomes an aggregation problem for the GNN. For the
+    ``element_id`` port to actually land on the element, the carrying classes must expose
+    their id as a port too — e.g. ``Lines(ports=("id", "bus1_id", "bus2_id"))``.
+
+    :meth:`build_table` derives numeric companions of the categorical columns: ``permanent``
+    (``acceptable_duration == -1``) and ``side_one``/``side_two`` (both ``False`` for
+    single-sided limits, ``side`` ``NONE`` or empty). Sentinel "N/A" limits are kept as
+    their 1.8e308 value (clipped by the downstream float conversion). Non-selected limit
+    groups (alternate sets) are always dropped.
+
+    :param ports: Address columns, the carrying element by default.
+    :param features: Feature columns: the limit value, its acceptable duration and the
+        derived indicators by default.
+    :param limit_types: ``type`` values to keep (``CURRENT``, ``ACTIVE_POWER``,
+        ``APPARENT_POWER``) — thermal limits only by default; ``None`` keeps every type.
+    """
+
+    def __init__(
+        self,
+        ports: Sequence[str] = ("element_id",),
+        features: Sequence[str] = ("value", "acceptable_duration", "permanent", "side_one", "side_two"),
+        *,
+        limit_types: Sequence[str] | None = ("CURRENT",),
+    ):
+        super().__init__(ports=ports, features=features)
+        self.limit_types = limit_types
+
+    def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
+        limits = network.get_operational_limits(all_attributes=True).reset_index()
+        limits = limits[limits["selected"]]
+        if self.limit_types is not None:
+            limits = limits[limits["type"].isin(self.limit_types)]
+        return limits.assign(
+            permanent=limits["acceptable_duration"] == -1,
+            side_one=limits["side"] == "ONE",
+            side_two=limits["side"] == "TWO",
+        )

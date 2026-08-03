@@ -20,7 +20,7 @@ from .generators import Generators
 from .hvdc import HvdcLines, LccConverterStations, VscConverterStations
 from .lines import Lines
 from .loads import Loads
-from .operational_limits import selected_permanent_current_limits
+from .operational_limits import OperationalLimits, selected_permanent_current_limits
 from .secondary_voltage_control import SecondaryVoltageControlUnits, SecondaryVoltageControlZones
 from .shunt_compensators import ShuntCompensators
 from .static_var_compensators import StaticVarCompensators
@@ -38,6 +38,7 @@ __all__ = [
     "LccConverterStations",
     "Lines",
     "Loads",
+    "OperationalLimits",
     "PypowsyblElements",
     "SecondaryVoltageControlUnits",
     "SecondaryVoltageControlZones",

@@ -19,6 +19,7 @@ from pypowsybl_to_energnn import (
     LccConverterStations,
     Lines,
     Loads,
+    OperationalLimits,
     PypowsyblConverter,
     SecondaryVoltageControlUnits,
     SecondaryVoltageControlZones,
@@ -183,6 +184,41 @@ def test_transformers_operational_limits_missing_are_nan(eurostag):
     assert df_feature["current_limit2"].isna().all()
     # Elements absent from the limits table: the indicator is NaN there, i.e. 0 downstream.
     assert df_feature["has_current_limit1"].isna().all()
+
+
+def test_operational_limits_class_keeps_every_selected_thermal_limit(eurostag):
+    # One hyper-edge per limit: the variable number of temporary limits per (element, side)
+    # is carried by the graph structure instead of a fixed-width feature vector.
+    df_port, df_feature = OperationalLimits()(network=eurostag)
+
+    limits = eurostag.get_operational_limits(all_attributes=True).reset_index()
+    expected = limits[limits["selected"] & (limits["type"] == "CURRENT")]
+    assert len(df_port) == len(expected) == 9
+    assert set(df_port["element_id"]) == {"NHV1_NHV2_1", "NHV1_NHV2_2"}
+    assert df_feature["permanent"].sum() == 4
+
+    mask = (df_port["element_id"] == "NHV1_NHV2_1") & df_feature["permanent"] & df_feature["side_one"]
+    assert df_feature.loc[mask, "value"].tolist() == [500.0]
+
+
+def test_operational_limits_class_empty_without_limits(ieee14):
+    df_port, df_feature = OperationalLimits()(network=ieee14)
+    assert len(df_port) == 0
+    assert len(df_feature) == 0
+
+
+def test_operational_limits_graph_ties_limits_to_their_element(eurostag):
+    # The carrying elements expose their id as a port, and the limits hang from it.
+    config = {
+        "buses": Buses(),
+        "lines": Lines(ports=("id", "bus1_id", "bus2_id")),
+        "operational_limits": OperationalLimits(),
+    }
+    graph = PypowsyblConverter(config)(network=eurostag)
+
+    limit_ports = graph.hyper_edge_sets["operational_limits"].port_dict
+    line_addresses = set(np.asarray(graph.hyper_edge_sets["lines"].port_dict["id"]).tolist())
+    assert set(np.asarray(limit_ports["element_id"]).tolist()) <= line_addresses
 
 
 def test_dangling_lines_operational_limits():
