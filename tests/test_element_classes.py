@@ -461,8 +461,8 @@ def test_secondary_voltage_control_pilot_bus_resolution():
 
     converter = SecondaryVoltageControlZones(ports=("name", "pilot_bus_id", "pilot_bus_breaker_bus_id"))
     df_port, _ = converter(network=network)
-    assert df_port["pilot_bus_id"].tolist() == ["VLHV2_0", "__dangling__1__pilot_bus_id"]
-    assert df_port["pilot_bus_breaker_bus_id"].tolist() == ["NHV2", "__dangling__1__pilot_bus_breaker_bus_id"]
+    assert df_port["pilot_bus_id"].tolist() == ["VLHV2_0", "__dangling__z2__pilot_bus_id"]
+    assert df_port["pilot_bus_breaker_bus_id"].tolist() == ["NHV2", "__dangling__z2__pilot_bus_breaker_bus_id"]
 
 
 def test_secondary_voltage_control_busbar_section_pilot():

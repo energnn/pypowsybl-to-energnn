@@ -78,7 +78,9 @@ class SecondaryVoltageControlZones(PypowsyblElements):
         candidates["pilot_bus_breaker_bus_id"] = bus_breaker_bus.replace("", float("nan"))
         # One row per zone: per view, the first candidate that resolves wins (groupby.first
         # skips NaN); a zone with no resolvable candidate keeps NaN, isolated downstream.
-        return candidates.groupby("name", sort=False, as_index=False).first()
+        zones = candidates.groupby("name", sort=False, as_index=False).first()
+        # The zone name keys the dangling-pilot sentinels, not the row position.
+        return zones.assign(id=zones["name"])
 
 
 class SecondaryVoltageControlUnits(PypowsyblElements):
