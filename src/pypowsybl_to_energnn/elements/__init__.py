@@ -18,6 +18,7 @@ from .buses import BusBreakerViewBuses, Buses
 from .dangling_lines import DanglingLines
 from .generators import Generators
 from .hvdc import HvdcLines, LccConverterStations, VscConverterStations
+from .infrastructure import Substations, VoltageLevels
 from .lines import Lines
 from .loads import Loads
 from .operational_limits import OperationalLimits, selected_permanent_current_limits
@@ -44,9 +45,11 @@ __all__ = [
     "SecondaryVoltageControlZones",
     "ShuntCompensators",
     "StaticVarCompensators",
+    "Substations",
     "Switches",
     "TableConverter",
     "TwoWindingsTransformers",
+    "VoltageLevels",
     "VscConverterStations",
     "isolate_dangling_ports",
     "selected_permanent_current_limits",

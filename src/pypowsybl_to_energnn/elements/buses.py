@@ -67,7 +67,9 @@ class Buses(PypowsyblElements):
     columns land prefixed (``voltage_level_nominal_v``, ...); the substation join also lands
     the plain ``substation_id`` column, usable as a port. Mind that substations mostly carry
     categorical columns (``TSO``, ``country``): encode them through :class:`TableConverter`
-    instead of listing them as raw features.
+    instead of listing them as raw features. This is the flat form of the infrastructure;
+    :class:`VoltageLevels` and :class:`Substations` are the chain form, with each tier as
+    its own hyper-edge class.
 
     :param ports: Address columns, ``("id",)`` by default.
     :param features: Feature columns, ``AC_LOAD_FLOW_OUTPUT_FEATURES`` by default (pass

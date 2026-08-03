@@ -25,8 +25,10 @@ from pypowsybl_to_energnn import (
     SecondaryVoltageControlZones,
     ShuntCompensators,
     StaticVarCompensators,
+    Substations,
     Switches,
     TwoWindingsTransformers,
+    VoltageLevels,
     VscConverterStations,
 )
 
@@ -42,7 +44,9 @@ CLASSES_AND_GETTERS = [
     (Loads, "get_loads"),
     (ShuntCompensators, "get_shunt_compensators"),
     (StaticVarCompensators, "get_static_var_compensators"),
+    (Substations, "get_substations"),
     (TwoWindingsTransformers, "get_2_windings_transformers"),
+    (VoltageLevels, "get_voltage_levels"),
     (VscConverterStations, "get_vsc_converter_stations"),
 ]
 
@@ -118,6 +122,26 @@ def test_buses_merge_the_infrastructure_tables(eurostag):
     assert set(df_port["substation_id"]) <= set(eurostag.get_substations().index)
     nominal_v = dict(zip(df_port["id"], df_feature["voltage_level_nominal_v"]))
     assert nominal_v == {"VLGEN_0": 24.0, "VLHV1_0": 380.0, "VLHV2_0": 380.0, "VLLOAD_0": 150.0}
+
+
+def test_infrastructure_chain():
+    # The chain form: buses hang from their voltage level, voltage levels from their
+    # substation, each tier a class of its own. Fresh network: PypowsyblConverter switches
+    # it to per-unit, which would corrupt the shared fixture for raw-value assertions.
+    network = pn.create_eurostag_tutorial_example1_network()
+    config = {
+        "buses": Buses(ports=("id", "voltage_level_id")),
+        "voltage_levels": VoltageLevels(),
+        "substations": Substations(),
+    }
+    graph = PypowsyblConverter(config)(network=network)
+
+    bus_ports = graph.hyper_edge_sets["buses"].port_dict
+    voltage_level_ports = graph.hyper_edge_sets["voltage_levels"].port_dict
+    voltage_level_addresses = set(np.asarray(voltage_level_ports["id"]).tolist())
+    assert set(np.asarray(bus_ports["voltage_level_id"]).tolist()) <= voltage_level_addresses
+    substation_addresses = set(np.asarray(graph.hyper_edge_sets["substations"].port_dict["id"]).tolist())
+    assert set(np.asarray(voltage_level_ports["substation_id"]).tolist()) <= substation_addresses
 
 
 def test_bus_breaker_view_buses(eurostag):
@@ -207,14 +231,17 @@ def test_operational_limits_class_empty_without_limits(ieee14):
     assert len(df_feature) == 0
 
 
-def test_operational_limits_graph_ties_limits_to_their_element(eurostag):
-    # The carrying elements expose their id as a port, and the limits hang from it.
+def test_operational_limits_graph_ties_limits_to_their_element():
+    # The carrying elements expose their id as a port, and the limits hang from it. Fresh
+    # network: PypowsyblConverter switches it to per-unit, which would corrupt the shared
+    # fixture for raw-value assertions.
+    network = pn.create_eurostag_tutorial_example1_network()
     config = {
         "buses": Buses(),
         "lines": Lines(ports=("id", "bus1_id", "bus2_id")),
         "operational_limits": OperationalLimits(),
     }
-    graph = PypowsyblConverter(config)(network=eurostag)
+    graph = PypowsyblConverter(config)(network=network)
 
     limit_ports = graph.hyper_edge_sets["operational_limits"].port_dict
     line_addresses = set(np.asarray(graph.hyper_edge_sets["lines"].port_dict["id"]).tolist())
