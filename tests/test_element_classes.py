@@ -22,7 +22,9 @@ from pypowsybl_to_energnn import (
     Lines,
     Loads,
     OperationalLimits,
+    PhaseTapChangers,
     PypowsyblConverter,
+    RatioTapChangers,
     ReactiveCapabilityCurvePoints,
     SecondaryVoltageControlUnits,
     SecondaryVoltageControlZones,
@@ -47,6 +49,8 @@ CLASSES_AND_GETTERS = [
     (LccConverterStations, "get_lcc_converter_stations"),
     (Lines, "get_lines"),
     (Loads, "get_loads"),
+    (PhaseTapChangers, "get_phase_tap_changers"),
+    (RatioTapChangers, "get_ratio_tap_changers"),
     (ReactiveCapabilityCurvePoints, "get_reactive_capability_curve_points"),
     (ShuntCompensators, "get_shunt_compensators"),
     (StaticVarCompensators, "get_static_var_compensators"),
@@ -111,6 +115,21 @@ def test_phase_tap_changers_merge():
     transformer_ids = list(network.get_2_windings_transformers().index)
     expected_tap = network.get_phase_tap_changers().loc["TWT", "tap"]
     assert df_feature["phase_tap_changer_tap"][transformer_ids.index("TWT")] == expected_tap
+
+
+def test_tap_changers_as_their_own_classes(eurostag):
+    # The connect form: one hyper-edge per device, tied to its transformer and to the bus it
+    # regulates — the remote-regulation edge the merged form cannot represent.
+    df_port, df_feature = RatioTapChangers()(network=eurostag)
+    assert df_port["id"].tolist() == ["NHV2_NLOAD"]
+    assert df_port["regulating_bus_id"].tolist() == ["VLLOAD_0"]
+    assert df_feature["target_v"].tolist() == [158.0]
+
+    network = pn.create_four_substations_node_breaker_network()
+    df_port, df_feature = PhaseTapChangers()(network=network)
+    assert df_port["id"].tolist() == ["TWT"]
+    assert df_port["regulating_bus_id"].tolist() == ["S1VL1_0"]
+    assert df_feature["tap"].tolist() == [15.0]
 
 
 def test_buses_merge_the_infrastructure_tables(eurostag):

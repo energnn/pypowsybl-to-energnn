@@ -28,6 +28,7 @@ from .shunt_compensators import ShuntCompensators
 from .static_var_compensators import StaticVarCompensators
 from .switches import Switches
 from .table import TableConverter
+from .tap_changers import PhaseTapChangers, RatioTapChangers
 from .two_windings_transformers import TwoWindingsTransformers
 
 __all__ = [
@@ -43,7 +44,9 @@ __all__ = [
     "Lines",
     "Loads",
     "OperationalLimits",
+    "PhaseTapChangers",
     "PypowsyblElements",
+    "RatioTapChangers",
     "ReactiveCapabilityCurvePoints",
     "SecondaryVoltageControlUnits",
     "SecondaryVoltageControlZones",

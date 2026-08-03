@@ -26,7 +26,9 @@ class TwoWindingsTransformers(PypowsyblElements):
     its own feature list parameter, naming the columns to bring in (``None`` = not joined).
     Joined columns land prefixed (``ratio_tap_changer_tap``, ...) so that they cannot collide
     with the transformer's own columns (both tables have a ``rho``), and are NaN (0
-    downstream) for transformers without the device.
+    downstream) for transformers without the device. The devices also exist as hyper-edge
+    classes of their own (:class:`RatioTapChangers`/:class:`PhaseTapChangers`), the connect
+    form carrying the regulation edge toward the regulated bus.
 
     :param ports: Address columns, the two extremity buses by default.
     :param features: Feature columns of the transformer table,
