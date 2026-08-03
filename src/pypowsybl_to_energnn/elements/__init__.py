@@ -29,6 +29,7 @@ from .static_var_compensators import StaticVarCompensators
 from .switches import Switches
 from .table import TableConverter
 from .tap_changers import PhaseTapChangers, PhaseTapChangerSteps, RatioTapChangers, RatioTapChangerSteps
+from .three_windings_transformers import ThreeWindingsTransformers
 from .two_windings_transformers import TwoWindingsTransformers
 
 __all__ = [
@@ -57,6 +58,7 @@ __all__ = [
     "Substations",
     "Switches",
     "TableConverter",
+    "ThreeWindingsTransformers",
     "TwoWindingsTransformers",
     "VoltageLevels",
     "VscConverterStations",

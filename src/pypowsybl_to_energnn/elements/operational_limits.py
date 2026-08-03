@@ -12,7 +12,13 @@ import pypowsybl.network as pn
 from .base import PypowsyblElements
 
 # ``side`` values of get_operational_limits, mapped to the column each limit lands in.
-_COLUMN_BY_SIDE = {"ONE": "current_limit1", "TWO": "current_limit2", "NONE": "current_limit", "": "current_limit"}
+_COLUMN_BY_SIDE = {
+    "ONE": "current_limit1",
+    "TWO": "current_limit2",
+    "THREE": "current_limit3",
+    "NONE": "current_limit",
+    "": "current_limit",
+}
 
 
 def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
@@ -22,8 +28,9 @@ def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
     duration, limit group): this function keeps the rows of the *selected* limit groups, of
     type ``CURRENT``, with ``acceptable_duration == -1`` (the permanent limit — temporary
     limits like ``10'`` or ``1'`` are dropped), and pivots them into one row per element with
-    one column per side: ``current_limit1``/``current_limit2`` for branches, ``current_limit``
-    for single-sided elements (dangling lines).
+    one column per side: ``current_limit1``/``current_limit2`` for branches (plus
+    ``current_limit3`` on three-windings transformers), ``current_limit`` for single-sided
+    elements (dangling lines).
 
     Each ``current_limit*`` column comes with a ``has_current_limit*`` companion, ``True``
     where the element carries the limit. Downstream, NaN features become 0, which would make

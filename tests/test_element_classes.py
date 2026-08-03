@@ -34,6 +34,7 @@ from pypowsybl_to_energnn import (
     StaticVarCompensators,
     Substations,
     Switches,
+    ThreeWindingsTransformers,
     TwoWindingsTransformers,
     VoltageLevels,
     VscConverterStations,
@@ -59,6 +60,7 @@ CLASSES_AND_GETTERS = [
     (ShuntCompensators, "get_shunt_compensators"),
     (StaticVarCompensators, "get_static_var_compensators"),
     (Substations, "get_substations"),
+    (ThreeWindingsTransformers, "get_3_windings_transformers"),
     (TwoWindingsTransformers, "get_2_windings_transformers"),
     (VoltageLevels, "get_voltage_levels"),
     (VscConverterStations, "get_vsc_converter_stations"),
@@ -119,6 +121,26 @@ def test_phase_tap_changers_merge():
     transformer_ids = list(network.get_2_windings_transformers().index)
     expected_tap = network.get_phase_tap_changers().loc["TWT", "tap"]
     assert df_feature["phase_tap_changer_tap"][transformer_ids.index("TWT")] == expected_tap
+
+
+def test_three_windings_transformers():
+    # One port per winding, and the aggregated limits gain a third side — previously the
+    # THREE rows were silently dropped by the pivot.
+    network = pn.create_micro_grid_be_network()
+    converter = ThreeWindingsTransformers(
+        operational_limit_features=("current_limit1", "current_limit2", "current_limit3", "has_current_limit3")
+    )
+    df_port, df_feature = converter(network=network)
+
+    assert len(df_port) == 1
+    buses = set(network.get_buses().index)
+    for port in ("bus1_id", "bus2_id", "bus3_id"):
+        assert set(df_port[port]) <= buses
+    row = df_feature.iloc[0]
+    assert row["current_limit1"] == 938.2
+    assert row["current_limit2"] == 1705.8
+    assert row["current_limit3"] == 17870.4
+    assert row["has_current_limit3"] == True  # noqa: E712
 
 
 def test_tap_changers_as_their_own_classes(eurostag):

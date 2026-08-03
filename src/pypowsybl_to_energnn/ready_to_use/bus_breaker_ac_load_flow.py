@@ -29,6 +29,7 @@ from pypowsybl_to_energnn.elements import (
     ShuntCompensators,
     StaticVarCompensators,
     Switches,
+    ThreeWindingsTransformers,
     TwoWindingsTransformers,
     VscConverterStations,
 )
@@ -38,6 +39,9 @@ BUS_BREAKER_AC_LOAD_FLOW_WARM_START_INPUT = {
     "switches": Switches(),
     "lines": Lines(ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id")),
     "two_windings_transformers": TwoWindingsTransformers(ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id")),
+    "three_windings_transformers": ThreeWindingsTransformers(
+        ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id", "bus_breaker_bus3_id")
+    ),
     "generators": Generators(ports=("bus_breaker_bus_id", "regulated_bus_breaker_bus_id")),
     "loads": Loads(ports=("bus_breaker_bus_id",)),
     "shunts": ShuntCompensators(ports=("bus_breaker_bus_id",)),
@@ -56,6 +60,10 @@ BUS_BREAKER_AC_LOAD_FLOW_INPUT = {
     "two_windings_transformers": TwoWindingsTransformers(
         ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id"),
         features=TwoWindingsTransformers.AC_LOAD_FLOW_INPUT_FEATURES,
+    ),
+    "three_windings_transformers": ThreeWindingsTransformers(
+        ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id", "bus_breaker_bus3_id"),
+        features=ThreeWindingsTransformers.AC_LOAD_FLOW_INPUT_FEATURES,
     ),
     "generators": Generators(
         ports=("bus_breaker_bus_id", "regulated_bus_breaker_bus_id"), features=Generators.AC_LOAD_FLOW_INPUT_FEATURES
@@ -84,6 +92,10 @@ BUS_BREAKER_AC_LOAD_FLOW_OUTPUT = {
     "two_windings_transformers": TwoWindingsTransformers(
         ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id"),
         features=TwoWindingsTransformers.AC_LOAD_FLOW_OUTPUT_FEATURES,
+    ),
+    "three_windings_transformers": ThreeWindingsTransformers(
+        ports=("bus_breaker_bus1_id", "bus_breaker_bus2_id", "bus_breaker_bus3_id"),
+        features=ThreeWindingsTransformers.AC_LOAD_FLOW_OUTPUT_FEATURES,
     ),
     "generators": Generators(ports=("bus_breaker_bus_id",), features=Generators.AC_LOAD_FLOW_OUTPUT_FEATURES),
     "loads": Loads(ports=("bus_breaker_bus_id",), features=Loads.AC_LOAD_FLOW_OUTPUT_FEATURES),

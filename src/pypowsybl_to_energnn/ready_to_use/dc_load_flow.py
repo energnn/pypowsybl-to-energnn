@@ -23,6 +23,7 @@ from pypowsybl_to_energnn.elements import (
     LccConverterStations,
     Lines,
     Loads,
+    ThreeWindingsTransformers,
     TwoWindingsTransformers,
     VscConverterStations,
 )
@@ -31,6 +32,7 @@ DC_LOAD_FLOW_INPUT = {
     "buses": Buses(features=None),
     "lines": Lines(features=Lines.DC_LOAD_FLOW_INPUT_FEATURES),
     "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.DC_LOAD_FLOW_INPUT_FEATURES),
+    "three_windings_transformers": ThreeWindingsTransformers(features=ThreeWindingsTransformers.DC_LOAD_FLOW_INPUT_FEATURES),
     "generators": Generators(ports=("bus_id",), features=Generators.DC_LOAD_FLOW_INPUT_FEATURES),
     "loads": Loads(features=Loads.DC_LOAD_FLOW_INPUT_FEATURES),
     "batteries": Batteries(features=Batteries.DC_LOAD_FLOW_INPUT_FEATURES),
@@ -45,6 +47,7 @@ DC_LOAD_FLOW_INPUT = {
 DC_LOAD_FLOW_OUTPUT = {
     "lines": Lines(features=Lines.DC_LOAD_FLOW_OUTPUT_FEATURES),
     "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.DC_LOAD_FLOW_OUTPUT_FEATURES),
+    "three_windings_transformers": ThreeWindingsTransformers(features=ThreeWindingsTransformers.DC_LOAD_FLOW_OUTPUT_FEATURES),
     "generators": Generators(ports=("bus_id",), features=Generators.DC_LOAD_FLOW_OUTPUT_FEATURES),
     "loads": Loads(features=Loads.DC_LOAD_FLOW_OUTPUT_FEATURES),
     "batteries": Batteries(features=Batteries.DC_LOAD_FLOW_OUTPUT_FEATURES),
