@@ -804,8 +804,8 @@ wheels = [
 
 [[package]]
 name = "energnn"
-version = "0.4.0.dev0"
-source = { git = "https://github.com/energnn/energnn?branch=int-addresses#70090e0f1a468f91f04d93ad1976127d01fb13ee" }
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "chex" },
     { name = "cloudpickle" },
@@ -822,6 +822,10 @@ dependencies = [
     { name = "orbax" },
     { name = "pandas" },
     { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fa/1d/79becf30a8c4f804b61d1e6bec17791feb0e8932e096c97bf95b86f84575/energnn-0.4.0.tar.gz", hash = "sha256:c64d24f9677910c0ac8a8338f3c722bc87a282193fe120e8f46399207696ad02", size = 1118898, upload-time = "2026-08-04T10:25:47.482Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/df/c6/2f883b229322839d21ffb08e3c2bd9c7c678d4f628331c176479d5d9dd9c/energnn-0.4.0-py3-none-any.whl", hash = "sha256:19a57bd03b6f126c2213783e17c5b20a05f98bd613875b21dbca5580fd76a3a0", size = 89391, upload-time = "2026-08-04T10:25:46.374Z" },
 ]
 
 [package.optional-dependencies]
@@ -3170,8 +3174,8 @@ docs = [
 
 [package.metadata]
 requires-dist = [
-    { name = "energnn", git = "https://github.com/energnn/energnn?branch=int-addresses" },
-    { name = "energnn", extras = ["gpu"], marker = "extra == 'gpu'", git = "https://github.com/energnn/energnn?branch=int-addresses" },
+    { name = "energnn", specifier = ">=0.4.0" },
+    { name = "energnn", extras = ["gpu"], marker = "extra == 'gpu'", specifier = ">=0.4.0" },
     { name = "pypowsybl", specifier = ">=1.14" },
 ]
 provides-extras = ["gpu"]
