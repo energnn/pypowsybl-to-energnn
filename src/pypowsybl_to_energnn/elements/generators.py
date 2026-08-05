@@ -74,6 +74,7 @@ class Generators(PypowsyblElements):
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         df = network.get_generators(all_attributes=True).reset_index()
         if self.active_power_control_features is not None:
-            extension = network.get_extensions("activePowerControl").add_prefix("active_power_control_")
+            extension = network.get_extensions("activePowerControl")
+            extension = extension[list(self.active_power_control_features)].add_prefix("active_power_control_")
             df = df.merge(extension, how="left", left_on="id", right_index=True)
         return df

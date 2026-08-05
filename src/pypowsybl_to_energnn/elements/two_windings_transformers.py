@@ -11,6 +11,7 @@ import pypowsybl.network as pn
 
 from .base import PypowsyblElements
 from .operational_limits import selected_permanent_current_limits
+from .tap_changers import PhaseTapChangers, RatioTapChangers
 
 
 class TwoWindingsTransformers(PypowsyblElements):
@@ -63,16 +64,9 @@ class TwoWindingsTransformers(PypowsyblElements):
     DC_LOAD_FLOW_INPUT_FEATURES = ("x", "rho", "alpha", "connected1", "connected2")
     DC_LOAD_FLOW_OUTPUT_FEATURES = ("p1", "p2")
 
-    RATIO_TAP_CHANGER_FEATURES = ("tap", "low_tap", "high_tap", "regulating", "target_v", "target_deadband")
-    PHASE_TAP_CHANGER_FEATURES = (
-        "tap",
-        "low_tap",
-        "high_tap",
-        "regulating",
-        "regulation_mode",
-        "regulation_value",
-        "target_deadband",
-    )
+    # The devices own their feature bundles; the merged form borrows them.
+    RATIO_TAP_CHANGER_FEATURES = RatioTapChangers.FEATURES
+    PHASE_TAP_CHANGER_FEATURES = PhaseTapChangers.FEATURES
 
     def __init__(
         self,
@@ -98,10 +92,12 @@ class TwoWindingsTransformers(PypowsyblElements):
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         df = network.get_2_windings_transformers(all_attributes=True).reset_index()
         if self.ratio_tap_changer_features is not None:
-            tap_changers = network.get_ratio_tap_changers(all_attributes=True).add_prefix("ratio_tap_changer_")
+            tap_changers = network.get_ratio_tap_changers(all_attributes=True)
+            tap_changers = tap_changers[list(self.ratio_tap_changer_features)].add_prefix("ratio_tap_changer_")
             df = df.merge(tap_changers, how="left", left_on="id", right_index=True)
         if self.phase_tap_changer_features is not None:
-            tap_changers = network.get_phase_tap_changers(all_attributes=True).add_prefix("phase_tap_changer_")
+            tap_changers = network.get_phase_tap_changers(all_attributes=True)
+            tap_changers = tap_changers[list(self.phase_tap_changer_features)].add_prefix("phase_tap_changer_")
             df = df.merge(tap_changers, how="left", left_on="id", right_index=True)
         if self.operational_limit_features is not None:
             limits = selected_permanent_current_limits(network).reindex(columns=list(self.operational_limit_features))

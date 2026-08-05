@@ -21,6 +21,14 @@ _COLUMN_BY_SIDE = {
 }
 
 
+def _check_sides_are_known(limits: pd.DataFrame) -> None:
+    """Raise on ``side`` values outside ``_COLUMN_BY_SIDE``, instead of silently dropping
+    (or mislabelling) the corresponding rows downstream."""
+    unknown = limits.loc[~limits["side"].isin(_COLUMN_BY_SIDE), "side"].unique()
+    if len(unknown):
+        raise ValueError(f"Unmapped operational limit side(s) {sorted(unknown)}; known sides: {sorted(_COLUMN_BY_SIDE)}.")
+
+
 def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
     """Aggregate ``get_operational_limits`` into one permanent current limit per element side.
 
@@ -49,6 +57,7 @@ def selected_permanent_current_limits(network: pn.Network) -> pd.DataFrame:
     """
     limits = network.get_operational_limits(all_attributes=True).reset_index()
     limits = limits[limits["selected"] & (limits["type"] == "CURRENT") & (limits["acceptable_duration"] == -1)]
+    _check_sides_are_known(limits)
     limits = limits.assign(column=limits["side"].map(_COLUMN_BY_SIDE))
     # aggfunc="min": the most conservative limit, in the untypical case where several selected
     # rows survive for the same (element, side).
@@ -70,15 +79,18 @@ class OperationalLimits(PypowsyblElements):
     ``element_id`` port to actually land on the element, the carrying classes must expose
     their id as a port too — e.g. ``Lines(ports=("id", "bus1_id", "bus2_id"))``.
 
-    :meth:`build_table` derives numeric companions of the categorical columns: ``permanent``
-    (``acceptable_duration == -1``) and ``side_one``/``side_two`` (both ``False`` for
-    single-sided limits, ``side`` ``NONE`` or empty). Sentinel "N/A" limits are kept as
-    their 1.8e308 value (clipped by the downstream float conversion). Non-selected limit
-    groups (alternate sets) are always dropped.
+    ``side`` is kept as a plain categorical feature (hashed to an arbitrary deterministic
+    float by the converter, like every categorical column — go through
+    :class:`TableConverter` for a proper encoding when the category structure matters);
+    :meth:`build_table` only normalizes the empty value onto ``NONE``, the other encoding
+    of "single-sided". ``acceptable_duration`` stays numeric — the durations are ordinal
+    data, and the ``-1`` of the permanent limits cannot collide with a real duration.
+    Sentinel "N/A" limits are kept as their 1.8e308 value (clipped by the downstream float
+    conversion). Non-selected limit groups (alternate sets) are always dropped.
 
     :param ports: Address columns, the carrying element by default.
     :param features: Feature columns: the limit value, its acceptable duration and the
-        derived indicators by default.
+        ``side`` category by default.
     :param limit_types: ``type`` values to keep (``CURRENT``, ``ACTIVE_POWER``,
         ``APPARENT_POWER``) — thermal limits only by default; ``None`` keeps every type.
     """
@@ -86,7 +98,7 @@ class OperationalLimits(PypowsyblElements):
     def __init__(
         self,
         ports: Sequence[str] = ("element_id",),
-        features: Sequence[str] = ("value", "acceptable_duration", "permanent", "side_one", "side_two"),
+        features: Sequence[str] = ("value", "acceptable_duration", "side"),
         *,
         limit_types: Sequence[str] | None = ("CURRENT",),
     ):
@@ -98,8 +110,4 @@ class OperationalLimits(PypowsyblElements):
         limits = limits[limits["selected"]]
         if self.limit_types is not None:
             limits = limits[limits["type"].isin(self.limit_types)]
-        return limits.assign(
-            permanent=limits["acceptable_duration"] == -1,
-            side_one=limits["side"] == "ONE",
-            side_two=limits["side"] == "TWO",
-        )
+        return limits.assign(side=limits["side"].replace("", "NONE"))

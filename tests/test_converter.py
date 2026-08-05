@@ -83,13 +83,19 @@ def test_the_config_is_amendable(network):
     assert set(SMALL_CONFIG) == {"buses", "lines", "loads"}
 
 
-def test_per_unit_is_enforced(network):
+def test_per_unit_is_enforced_and_restored(network):
+    # The extraction runs in the converter's mode (the two graphs read different scales),
+    # but the caller's network is put back in its previous mode afterwards.
     network.per_unit = False
-    PypowsyblConverter(SMALL_CONFIG)(network=network)
-    assert network.per_unit is True
-    PypowsyblConverter(SMALL_CONFIG, per_unit=False)(network=network)
+    graph_per_united = PypowsyblConverter(SMALL_CONFIG)(network=network)
     assert network.per_unit is False
     network.per_unit = True
+    graph_raw = PypowsyblConverter(SMALL_CONFIG, per_unit=False)(network=network)
+    assert network.per_unit is True
+
+    per_united = np.asarray(graph_per_united.hyper_edge_sets["lines"].feature_array)
+    raw = np.asarray(graph_raw.hyper_edge_sets["lines"].feature_array)
+    assert not np.array_equal(per_united, raw)
 
 
 def test_get_structure():

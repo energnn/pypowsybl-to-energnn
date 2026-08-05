@@ -26,7 +26,6 @@ import pandas as pd
 import pypowsybl.network as pn
 
 from .base import PypowsyblElements
-from .two_windings_transformers import TwoWindingsTransformers
 
 
 class RatioTapChangers(PypowsyblElements):
@@ -35,7 +34,8 @@ class RatioTapChangers(PypowsyblElements):
     The ``id`` port is the transformer carrying the device; ``regulating_bus_id`` points to
     the bus whose voltage the changer regulates (a bus view id, on the same addresses as
     :class:`Buses`), possibly far from the transformer. The default features are
-    ``TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES``, the bundle of the merged form.
+    ``FEATURES``, the bundle also borrowed by the merged form
+    (``TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES``).
 
     :param ports: Address columns, the carrying transformer and the regulated bus by
         default.
@@ -43,10 +43,12 @@ class RatioTapChangers(PypowsyblElements):
         default.
     """
 
+    FEATURES = ("tap", "low_tap", "high_tap", "regulating", "target_v", "target_deadband")
+
     def __init__(
         self,
         ports: Sequence[str] = ("id", "regulating_bus_id"),
-        features: Sequence[str] = TwoWindingsTransformers.RATIO_TAP_CHANGER_FEATURES,
+        features: Sequence[str] = FEATURES,
     ):
         super().__init__(ports=ports, features=features)
 
@@ -59,9 +61,10 @@ class PhaseTapChangers(PypowsyblElements):
 
     The ``id`` port is the transformer carrying the device; ``regulating_bus_id`` points to
     the regulated bus (a bus view id, on the same addresses as :class:`Buses`). The default
-    features are ``TwoWindingsTransformers.PHASE_TAP_CHANGER_FEATURES``, the bundle of the
-    merged form — ``regulation_mode`` among them is categorical (hashed to an arbitrary
-    deterministic float; go through :class:`TableConverter` for a proper encoding).
+    features are ``FEATURES``, the bundle also borrowed by the merged form
+    (``TwoWindingsTransformers.PHASE_TAP_CHANGER_FEATURES``) — ``regulation_mode`` among
+    them is categorical (hashed to an arbitrary deterministic float; go through
+    :class:`TableConverter` for a proper encoding).
 
     :param ports: Address columns, the carrying transformer and the regulated bus by
         default.
@@ -69,10 +72,20 @@ class PhaseTapChangers(PypowsyblElements):
         default.
     """
 
+    FEATURES = (
+        "tap",
+        "low_tap",
+        "high_tap",
+        "regulating",
+        "regulation_mode",
+        "regulation_value",
+        "target_deadband",
+    )
+
     def __init__(
         self,
         ports: Sequence[str] = ("id", "regulating_bus_id"),
-        features: Sequence[str] = TwoWindingsTransformers.PHASE_TAP_CHANGER_FEATURES,
+        features: Sequence[str] = FEATURES,
     ):
         super().__init__(ports=ports, features=features)
 

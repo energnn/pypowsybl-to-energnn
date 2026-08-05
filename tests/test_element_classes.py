@@ -30,6 +30,7 @@ from pypowsybl_to_energnn import (
     ReactiveCapabilityCurvePoints,
     SecondaryVoltageControlUnits,
     SecondaryVoltageControlZones,
+    selected_permanent_current_limits,
     ShuntCompensators,
     StaticVarCompensators,
     Substations,
@@ -190,11 +191,10 @@ def test_buses_merge_the_infrastructure_tables(eurostag):
     assert nominal_v == {"VLGEN_0": 24.0, "VLHV1_0": 380.0, "VLHV2_0": 380.0, "VLLOAD_0": 150.0}
 
 
-def test_infrastructure_chain():
+def test_infrastructure_chain(eurostag):
     # The chain form: buses hang from their voltage level, voltage levels from their
-    # substation, each tier a class of its own. Fresh network: PypowsyblConverter switches
-    # it to per-unit, which would corrupt the shared fixture for raw-value assertions.
-    network = pn.create_eurostag_tutorial_example1_network()
+    # substation, each tier a class of its own.
+    network = eurostag
     config = {
         "buses": Buses(ports=("id", "voltage_level_id")),
         "voltage_levels": VoltageLevels(),
@@ -322,10 +322,45 @@ def test_operational_limits_class_keeps_every_selected_thermal_limit(eurostag):
     expected = limits[limits["selected"] & (limits["type"] == "CURRENT")]
     assert len(df_port) == len(expected) == 9
     assert set(df_port["element_id"]) == {"NHV1_NHV2_1", "NHV1_NHV2_2"}
-    assert df_feature["permanent"].sum() == 4
+    assert (df_feature["acceptable_duration"] == -1).sum() == 4
 
-    mask = (df_port["element_id"] == "NHV1_NHV2_1") & df_feature["permanent"] & df_feature["side_one"]
+    permanent = df_feature["acceptable_duration"] == -1
+    mask = (df_port["element_id"] == "NHV1_NHV2_1") & permanent & (df_feature["side"] == "ONE")
     assert df_feature.loc[mask, "value"].tolist() == [500.0]
+
+
+def test_operational_limits_class_keeps_side_as_a_category():
+    # side is a plain categorical feature (hashed downstream): every value of the
+    # vocabulary flows through, THREE included — no derived indicator to maintain.
+    network = pn.create_micro_grid_be_network()
+    _, df_feature = OperationalLimits()(network=network)
+
+    assert "THREE" in set(df_feature["side"])
+    # The empty encoding of "single-sided" is normalised onto NONE, so that the two
+    # spellings cannot hash to two different categories.
+    assert "" not in set(df_feature["side"])
+
+
+def test_unmapped_limit_side_raises():
+    # The mergeable form pivots the sides into a fixed set of columns: a side outside the
+    # vocabulary must raise instead of being silently dropped by the pivot.
+    limits = pd.DataFrame(
+        {
+            "element_id": ["L"],
+            "side": ["FOUR"],
+            "type": ["CURRENT"],
+            "selected": [True],
+            "acceptable_duration": [-1],
+            "value": [10.0],
+        }
+    ).set_index("element_id")
+
+    class FakeNetwork:
+        def get_operational_limits(self, all_attributes=False):
+            return limits
+
+    with pytest.raises(ValueError, match=r"FOUR"):
+        selected_permanent_current_limits(FakeNetwork())
 
 
 def test_operational_limits_class_empty_without_limits(ieee14):
@@ -334,11 +369,9 @@ def test_operational_limits_class_empty_without_limits(ieee14):
     assert len(df_feature) == 0
 
 
-def test_operational_limits_graph_ties_limits_to_their_element():
-    # The carrying elements expose their id as a port, and the limits hang from it. Fresh
-    # network: PypowsyblConverter switches it to per-unit, which would corrupt the shared
-    # fixture for raw-value assertions.
-    network = pn.create_eurostag_tutorial_example1_network()
+def test_operational_limits_graph_ties_limits_to_their_element(eurostag):
+    # The carrying elements expose their id as a port, and the limits hang from it.
+    network = eurostag
     config = {
         "buses": Buses(),
         "lines": Lines(ports=("id", "bus1_id", "bus2_id")),

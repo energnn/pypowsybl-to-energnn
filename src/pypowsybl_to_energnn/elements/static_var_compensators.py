@@ -63,6 +63,7 @@ class StaticVarCompensators(PypowsyblElements):
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         df = network.get_static_var_compensators(all_attributes=True).reset_index()
         if self.standby_automaton_features is not None:
-            extension = network.get_extensions("standbyAutomaton").add_prefix("standby_automaton_")
+            extension = network.get_extensions("standbyAutomaton")
+            extension = extension[list(self.standby_automaton_features)].add_prefix("standby_automaton_")
             df = df.merge(extension, how="left", left_on="id", right_index=True)
         return df

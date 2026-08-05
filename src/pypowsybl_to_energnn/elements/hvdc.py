@@ -74,10 +74,12 @@ class HvdcLines(PypowsyblElements):
         df = network.get_hvdc_lines(all_attributes=True).reset_index()
         if self.hvdc_angle_droop_active_power_control_features is not None:
             extension = network.get_extensions("hvdcAngleDroopActivePowerControl")
+            extension = extension[list(self.hvdc_angle_droop_active_power_control_features)]
             extension = extension.add_prefix("hvdc_angle_droop_active_power_control_")
             df = df.merge(extension, how="left", left_on="id", right_index=True)
         if self.hvdc_operator_active_power_range_features is not None:
             extension = network.get_extensions("hvdcOperatorActivePowerRange")
+            extension = extension[list(self.hvdc_operator_active_power_range_features)]
             extension = extension.add_prefix("hvdc_operator_active_power_range_")
             df = df.merge(extension, how="left", left_on="id", right_index=True)
         return df

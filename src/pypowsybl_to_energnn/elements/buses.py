@@ -20,8 +20,9 @@ def _merge_infrastructure(
 ) -> pd.DataFrame:
     """Join the ``voltage_levels`` and ``substations`` infrastructure tables onto the buses.
 
-    Both joins chain through the ``voltage_level_id`` column of the bus table; the joined
-    columns land prefixed (``voltage_level_nominal_v``, ``substation_country``, ...). The
+    Both joins chain through the ``voltage_level_id`` column of the bus table; each side
+    table is trimmed down to the requested columns before the join, and the joined columns
+    land prefixed (``voltage_level_nominal_v``, ``substation_country``, ...). The
     substation join also lands the plain ``substation_id`` column, usable as a port.
     """
     if voltage_level_features is None and substation_features is None:
@@ -29,10 +30,11 @@ def _merge_infrastructure(
 
     voltage_levels = network.get_voltage_levels(all_attributes=True)
     if voltage_level_features is not None:
-        df = df.merge(voltage_levels.add_prefix("voltage_level_"), how="left", left_on="voltage_level_id", right_index=True)
+        trimmed = voltage_levels[list(voltage_level_features)].add_prefix("voltage_level_")
+        df = df.merge(trimmed, how="left", left_on="voltage_level_id", right_index=True)
     if substation_features is not None:
         df = df.assign(substation_id=df["voltage_level_id"].map(voltage_levels["substation_id"]))
-        substations = network.get_substations(all_attributes=True).add_prefix("substation_")
+        substations = network.get_substations(all_attributes=True)[list(substation_features)].add_prefix("substation_")
         df = df.merge(substations, how="left", left_on="substation_id", right_index=True)
     return df
 
