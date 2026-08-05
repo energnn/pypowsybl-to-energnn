@@ -164,6 +164,18 @@ def test_isolate_dangling_ports():
     assert df.loc[1, "bus_id"] == ""
 
 
+def test_isolate_dangling_ports_with_duplicated_ids():
+    # Tables with one row per (element, ...) pair repeat the element id: two dangling ports
+    # of the same id must still get distinct sentinels, or the rows would be spuriously
+    # connected through a shared phantom node. Only the repeats gain a rank suffix.
+    df = pd.DataFrame({"id": ["a", "a", "a"], "bus_id": ["bus1", "", ""]})
+    isolated = isolate_dangling_ports(df, ["bus_id"])
+
+    assert isolated.loc[0, "bus_id"] == "bus1"
+    assert isolated.loc[1, "bus_id"] == "__dangling__a__bus_id"
+    assert isolated.loc[2, "bus_id"] != isolated.loc[1, "bus_id"]
+
+
 def test_isolate_dangling_ports_without_id_column():
     df = pd.DataFrame({"bus_id": ["", "bus1"]}, index=["a", "b"])
     isolated = isolate_dangling_ports(df, ["bus_id"])

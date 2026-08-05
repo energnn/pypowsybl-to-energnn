@@ -20,7 +20,9 @@ def isolate_dangling_ports(df: pd.DataFrame, ports: list[str]) -> pd.DataFrame:
     Left as-is, such values would become one ordinary shared address, spuriously connecting
     every such element through a single phantom node. Each empty port is instead rerouted to
     its own fresh address — deterministic (derived from the element id and the column name),
-    so the graph does not depend on row order and is reproducible across runs.
+    so the graph does not depend on row order and is reproducible across runs. Sentinels are
+    unique even when the id column is not (tables with one row per (element, ...) pair):
+    repeats are ranked apart, the rank suffix being the only row-order-dependent part.
 
     :param df: Table with one row per element, holding an ``id`` column (the row index is
         used as element id otherwise).
@@ -33,7 +35,9 @@ def isolate_dangling_ports(df: pd.DataFrame, ports: list[str]) -> pd.DataFrame:
     df = df.copy()
     ids = df["id"] if "id" in df.columns else df.index.to_series()
     for column, mask in masks.items():
-        df.loc[mask, column] = ids[mask].map(lambda element_id: f"__dangling__{element_id}__{column}")
+        sentinels = ids[mask].map(lambda element_id: f"__dangling__{element_id}__{column}")
+        rank = sentinels.groupby(sentinels).cumcount()
+        df.loc[mask, column] = sentinels.where(rank == 0, sentinels + "__" + rank.astype(str))
     return df
 
 
