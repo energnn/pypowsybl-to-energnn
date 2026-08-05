@@ -54,7 +54,34 @@ def _with_infrastructure_features(
     return (list(features) if features is not None else []) + merged
 
 
-class Buses(PypowsyblElements):
+class _BusesBase(PypowsyblElements):
+    """Machinery shared by the bus classes of the two topology views: the feature constants
+    and the constructor wiring the infrastructure joins. Each subclass keeps its own
+    explicit :meth:`build_table` — the whole story of its conversion stays in one place.
+    """
+
+    AC_LOAD_FLOW_INPUT_FEATURES: tuple[str, ...] = ()
+    AC_LOAD_FLOW_OUTPUT_FEATURES = ("v_mag",)
+
+    VOLTAGE_LEVEL_FEATURES = ("nominal_v", "high_voltage_limit", "low_voltage_limit")
+
+    def __init__(
+        self,
+        ports: Sequence[str] = ("id",),
+        # The default is bound to the base constants at class definition: a subclass
+        # overriding them would not change it (both views share the same bundles today).
+        features: Sequence[str] | None = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
+        *,
+        voltage_level_features: Sequence[str] | None = None,
+        substation_features: Sequence[str] | None = None,
+    ):
+        features = _with_infrastructure_features(features, voltage_level_features, substation_features)
+        super().__init__(ports=ports, features=features)
+        self.voltage_level_features = voltage_level_features
+        self.substation_features = substation_features
+
+
+class Buses(_BusesBase):
     """Buses of the bus view (``get_buses``), the nodes every other element attaches to.
 
     Their ``id`` is the address the ``bus_id``/``bus1_id``/... ports of the other classes
@@ -84,30 +111,12 @@ class Buses(PypowsyblElements):
         ``substation_`` in the graph. ``None`` (default) leaves the table out.
     """
 
-    AC_LOAD_FLOW_INPUT_FEATURES: tuple[str, ...] = ()
-    AC_LOAD_FLOW_OUTPUT_FEATURES = ("v_mag",)
-
-    VOLTAGE_LEVEL_FEATURES = ("nominal_v", "high_voltage_limit", "low_voltage_limit")
-
-    def __init__(
-        self,
-        ports: Sequence[str] = ("id",),
-        features: Sequence[str] | None = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
-        *,
-        voltage_level_features: Sequence[str] | None = None,
-        substation_features: Sequence[str] | None = None,
-    ):
-        features = _with_infrastructure_features(features, voltage_level_features, substation_features)
-        super().__init__(ports=ports, features=features)
-        self.voltage_level_features = voltage_level_features
-        self.substation_features = substation_features
-
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         df = network.get_buses(all_attributes=True).reset_index()
         return _merge_infrastructure(df, network, self.voltage_level_features, self.substation_features)
 
 
-class BusBreakerViewBuses(PypowsyblElements):
+class BusBreakerViewBuses(_BusesBase):
     """Buses of the bus/breaker view (``get_bus_breaker_view_buses``), the finer topology nodes.
 
     The ``bus_breaker_bus_id``/... ports of the other classes (and :class:`Switches`, on
@@ -126,24 +135,6 @@ class BusBreakerViewBuses(PypowsyblElements):
     :param substation_features: Columns of ``get_substations`` to join, prefixed by
         ``substation_`` in the graph. ``None`` (default) leaves the table out.
     """
-
-    AC_LOAD_FLOW_INPUT_FEATURES: tuple[str, ...] = ()
-    AC_LOAD_FLOW_OUTPUT_FEATURES = ("v_mag",)
-
-    VOLTAGE_LEVEL_FEATURES = Buses.VOLTAGE_LEVEL_FEATURES
-
-    def __init__(
-        self,
-        ports: Sequence[str] = ("id",),
-        features: Sequence[str] | None = AC_LOAD_FLOW_INPUT_FEATURES + AC_LOAD_FLOW_OUTPUT_FEATURES,
-        *,
-        voltage_level_features: Sequence[str] | None = None,
-        substation_features: Sequence[str] | None = None,
-    ):
-        features = _with_infrastructure_features(features, voltage_level_features, substation_features)
-        super().__init__(ports=ports, features=features)
-        self.voltage_level_features = voltage_level_features
-        self.substation_features = substation_features
 
     def build_table(self, network: pn.Network, **kwargs) -> pd.DataFrame:
         df = network.get_bus_breaker_view_buses(all_attributes=True).reset_index()
