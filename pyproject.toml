@@ -14,9 +14,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-energnn = { git = "https://github.com/energnn/energnn", branch = "int-addresses" }
-
-
+energnn = { git = "https://github.com/energnn/energnn" }
 
 [dependency-groups]
 dev = [
