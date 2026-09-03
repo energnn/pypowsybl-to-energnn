@@ -9,6 +9,16 @@
 from energnn.converter import Converter, ElementsConverter
 
 from . import elements, ready_to_use
+from .converter import PypowsyblConverter
+from .elements import *  # noqa: F401,F403
 from .ready_to_use import *  # noqa: F401,F403
 
-__all__ = ["Converter", "ElementsConverter", "elements", "ready_to_use", *ready_to_use.__all__]
+__all__ = [
+    "Converter",
+    "ElementsConverter",
+    "PypowsyblConverter",
+    "elements",
+    "ready_to_use",
+    *elements.__all__,
+    *ready_to_use.__all__,
+]
