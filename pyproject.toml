@@ -13,11 +13,13 @@ dependencies = [
     "pypowsybl>=1.14",
 ]
 
+[tool.uv.sources]
+energnn = { git = "https://github.com/energnn/energnn" }
+
 [project.optional-dependencies]
 gpu = [
     "energnn[gpu]>=0.4.0",
 ]
-
 
 [dependency-groups]
 dev = [
