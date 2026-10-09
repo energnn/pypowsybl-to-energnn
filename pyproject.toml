@@ -17,6 +17,7 @@ dependencies = [
 gpu = [
     "energnn[gpu]>=0.4.0",
 ]
+
 [dependency-groups]
 dev = [
     "pytest>=8.0.0",
