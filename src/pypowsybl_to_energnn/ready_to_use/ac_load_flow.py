@@ -4,110 +4,93 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from energnn.converter import Converter
+"""Explicit configurations for the AC power flow, in the bus/branch (bus view) topology.
+
+Three assemblies of the per-class feature bundles (open a class — :class:`Lines`,
+:class:`Generators`, ... — to read the column lists):
+
+- ``AC_LOAD_FLOW_WARM_START_INPUT`` — every class with its defaults: the problem data
+  *and* the state solved by a first AC load flow, which is the realistic GNN input (run a
+  power flow before converting; unsolved columns are NaN, 0 downstream);
+- ``AC_LOAD_FLOW_INPUT`` — the problem data alone (impedances, limits, setpoints), for the
+  simulator-proxy setting;
+- ``AC_LOAD_FLOW_OUTPUT`` — the solved state alone (``p``/``q``/``i`` per element,
+  ``v_mag`` on the buses), the typical prediction target.
+
+These dicts are plain data meant to be copied and amended entry by entry
+(see :class:`PypowsyblConverter`). ``regulated_bus_id`` ports (generators, SVCs, VSC
+stations) point to the remotely regulated bus — an edge toward a possibly distant node,
+essential to voltage control. Output notes: the ports let predictions be matched back to
+the network (drop them when redundant with an input graph extracted from the same network);
+phase angles are excluded from the bus outputs (not permutation equivariant); HVDC lines
+carry no output column and are omitted entirely.
+"""
 
 from pypowsybl_to_energnn.elements import (
-    BatteriesConverter,
-    BusesConverter,
-    DanglingLinesConverter,
-    GeneratorsConverter,
-    HVDCLinesConverter,
-    LCCConverterStationsConverter,
-    LinesConverter,
-    LoadsConverter,
-    ShuntCompensatorsConverter,
-    StaticVarCompensatorsConverter,
-    TwoWindingsTransformersConverter,
-    VSCConverterStationsConverter,
+    Batteries,
+    Buses,
+    DanglingLines,
+    Generators,
+    HvdcLines,
+    LccConverterStations,
+    Lines,
+    Loads,
+    ShuntCompensators,
+    StaticVarCompensators,
+    ThreeWindingsTransformers,
+    TwoWindingsTransformers,
+    VscConverterStations,
 )
 
+AC_LOAD_FLOW_WARM_START_INPUT = {
+    "buses": Buses(),
+    "lines": Lines(),
+    "two_windings_transformers": TwoWindingsTransformers(),
+    "three_windings_transformers": ThreeWindingsTransformers(),
+    "generators": Generators(),
+    "loads": Loads(),
+    "shunts": ShuntCompensators(),
+    "static_var_compensators": StaticVarCompensators(),
+    "batteries": Batteries(),
+    "dangling_lines": DanglingLines(),
+    "hvdc_lines": HvdcLines(),
+    "lcc_converter_stations": LccConverterStations(),
+    "vsc_converter_stations": VscConverterStations(),
+}
 
-class ACLoadFlowInputConverter(Converter):
+AC_LOAD_FLOW_INPUT = {
+    "buses": Buses(features=None),
+    "lines": Lines(features=Lines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.AC_LOAD_FLOW_INPUT_FEATURES),
+    "three_windings_transformers": ThreeWindingsTransformers(features=ThreeWindingsTransformers.AC_LOAD_FLOW_INPUT_FEATURES),
+    "generators": Generators(features=Generators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "loads": Loads(features=Loads.AC_LOAD_FLOW_INPUT_FEATURES),
+    "shunts": ShuntCompensators(features=ShuntCompensators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "static_var_compensators": StaticVarCompensators(features=StaticVarCompensators.AC_LOAD_FLOW_INPUT_FEATURES),
+    "batteries": Batteries(features=Batteries.AC_LOAD_FLOW_INPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "hvdc_lines": HvdcLines(features=HvdcLines.AC_LOAD_FLOW_INPUT_FEATURES),
+    "lcc_converter_stations": LccConverterStations(features=LccConverterStations.AC_LOAD_FLOW_INPUT_FEATURES),
+    "vsc_converter_stations": VscConverterStations(features=VscConverterStations.AC_LOAD_FLOW_INPUT_FEATURES),
+}
 
-    elements_converter_dict = {
-        "two_windings_transformers": TwoWindingsTransformersConverter(
-            ["bus1_id", "bus2_id"],
-            ["r", "x", "g", "b", "rated_u1", "rated_u2", "rated_s", "rho", "alpha", "connected1", "connected2"],
-        ),
-        "batteries": BatteriesConverter(
-            ["bus_id"],
-            ["max_p", "min_p", "min_q", "max_q", "target_p", "target_q", "connected"],
-        ),
-        "buses": BusesConverter(["id"], None),
-        "dangling_lines": DanglingLinesConverter(["bus_id"], ["r", "x", "g", "b", "p0", "q0"]),
-        "generators": GeneratorsConverter(
-            ["bus_id", "regulated_bus_id"],
-            [
-                "target_p",
-                "min_p",
-                "max_p",
-                "min_q",
-                "max_q",
-                "rated_s",
-                "target_v",
-                "target_q",
-                "voltage_regulator_on",
-                "connected",
-            ],
-        ),
-        "hvdc_lines": HVDCLinesConverter(
-            ["converter_station1_id", "converter_station2_id"],
-            ["converters_mode", "target_p", "max_p", "nominal_v", "r", "connected1", "connected2"],
-        ),
-        "lcc_converter_stations": LCCConverterStationsConverter(
-            ["id", "bus_id"], ["power_factor", "loss_factor", "connected"]
-        ),
-        "lines": LinesConverter(["bus1_id", "bus2_id"], ["r", "x", "g1", "b1", "g2", "b2", "connected1", "connected2"]),
-        "loads": LoadsConverter(["bus_id"], ["p0", "q0", "connected"]),
-        "shunts": ShuntCompensatorsConverter(
-            ["bus_id"],
-            [
-                "g",
-                "b",
-                "max_section_count",
-                "section_count",
-                "voltage_regulation_on",
-                "target_v",
-                "target_deadband",
-                "connected",
-            ],
-        ),
-        "static_var_compensators": StaticVarCompensatorsConverter(
-            ["bus_id", "regulated_bus_id"],
-            ["b_min", "b_max", "target_v", "target_q", "regulation_mode", "regulating", "connected"],
-        ),
-        "vsc_converter_stations": VSCConverterStationsConverter(
-            ["id", "bus_id", "regulated_bus_id"],
-            [
-                "loss_factor",
-                "min_q",
-                "max_q",
-                "min_q_at_target_p",
-                "max_q_at_target_p",
-                "min_q_at_p",
-                "max_q_at_p",
-                "target_v",
-                "target_q",
-                "voltage_regulator_on",
-                "connected",
-            ],
-        ),
-    }
-
-
-class ACLoadFlowOutputConverter(Converter):
-
-    elements_converter_dict = {
-        "two_windings_transformers": TwoWindingsTransformersConverter(None, ["p1", "q1", "i1", "p2", "q2", "i2"]),
-        "batteries": BatteriesConverter(None, ["p", "q", "i"]),
-        "buses": BusesConverter(None, ["v_mag"]),  # Phase angle is not permutation equivariant
-        "dangling_lines": DanglingLinesConverter(None, ["p", "q", "i"]),
-        "generators": GeneratorsConverter(None, ["p", "q", "i"]),
-        # Nothing for HVDC lines.
-        "lcc_converter_stations": LCCConverterStationsConverter(None, ["p", "q", "i"]),
-        "lines": LinesConverter(None, ["p1", "q1", "i1", "p2", "q2", "i2"]),
-        "loads": LoadsConverter(None, ["p", "q", "i"]),
-        "shunts": ShuntCompensatorsConverter(None, ["p", "q", "i"]),
-        "static_var_compensators": StaticVarCompensatorsConverter(None, ["p", "q", "i"]),
-        "vsc_converter_stations": VSCConverterStationsConverter(None, ["p", "q", "i"]),
-    }
+AC_LOAD_FLOW_OUTPUT = {
+    "buses": Buses(features=Buses.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "lines": Lines(features=Lines.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "two_windings_transformers": TwoWindingsTransformers(features=TwoWindingsTransformers.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "three_windings_transformers": ThreeWindingsTransformers(features=ThreeWindingsTransformers.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "generators": Generators(ports=("bus_id",), features=Generators.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "loads": Loads(features=Loads.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "shunts": ShuntCompensators(features=ShuntCompensators.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "static_var_compensators": StaticVarCompensators(
+        ports=("bus_id",), features=StaticVarCompensators.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
+    "batteries": Batteries(features=Batteries.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "dangling_lines": DanglingLines(features=DanglingLines.AC_LOAD_FLOW_OUTPUT_FEATURES),
+    "lcc_converter_stations": LccConverterStations(
+        ports=("bus_id",), features=LccConverterStations.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
+    "vsc_converter_stations": VscConverterStations(
+        ports=("bus_id",), features=VscConverterStations.AC_LOAD_FLOW_OUTPUT_FEATURES
+    ),
+}
