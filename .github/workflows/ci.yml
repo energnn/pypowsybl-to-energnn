@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [ "main" ]
+  release:
+    types:
+      - published
+
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
   tests:
@@ -11,8 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
@@ -37,3 +43,8 @@ jobs:
 
       - name: Run tests
         run: uv run pytest --cov=pypowsybl_to_energnn
+
+      - name: Release on PyPi
+        if: ${{ github.event_name == 'release'}}
+        shell: bash
+        run: uv publish
